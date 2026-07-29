@@ -47,7 +47,7 @@ Comportamento induzido pela regra 2 do CLAUDE.md ("decisões de ambiguidade são
 do humano"). Minha decisão: status derivado aritmeticamente do valor
 (aprovado = integral; parcial = entre zero e o integral, exclusivos;
 recusado = zero) + novo código COTA_ESGOTADA no enum.
-Evidência: `docs/sessions/01-<nome>.md`, trecho "Ponto fraco que você deve
+Evidência: `docs/sessions/01-spec-plan-tasks.md`, trecho "Ponto fraco que você deve
 verificar antes de prosseguir" (final da AMB-016).
 
 ---
@@ -122,7 +122,7 @@ a política com o JSON.
 reconheceu o erro ("Você está certo — meu erro") e reapresentou com opções
 válidas (A: 1 lançamento = 1 diária; D: extração da descrição com fallback).
 
-**Onde está a evidência:** `docs/sessions/01-<nome>.md`, trecho "Antes de
+**Onde está a evidência:** `docs/sessions/01-spec-plan-tasks.md`, trecho "Antes de
 decidir a AMB-003".
 
 ### Caso 2 — Exemplo do schema contradizendo o próprio enum
@@ -143,7 +143,7 @@ mais 7 ajustes na proposta (remoção de timestamp para garantir determinismo,
 motivo em código + texto, campo duplicata_de, valor_original vs
 valor_considerado, semântica do status declarada, ordem preservada, 2 casas).
 
-**Onde está a evidência:** `docs/sessions/01-<nome>.md`, trecho "Auditoria da
+**Onde está a evidência:** `docs/sessions/01-spec-plan-tasks.md`, trecho "Auditoria da
 proposta".
 
 ### Caso 3 — Lacunas na lista inicial de candidatas
@@ -160,7 +160,7 @@ antes de abrir a sessão) e conferi a lista do agente contra ele.
 
 **O que eu fiz:** Mandei incluir os 3 itens antes de decidir a primeira AMB.
 
-**Onde está a evidência:** `docs/sessions/01-<nome>.md`, trecho "Antes de
+**Onde está a evidência:** `docs/sessions/01-spec-plan-tasks.md`, trecho "Antes de
 decidir a AMB-001".
 
 ### Caso 4 — Decisão invertida silenciosamente na materialização da spec
@@ -185,7 +185,7 @@ aceites no RF-01 e na seção 9 (d-011 → 33.333 / 33.33); e fechar a decisão 
 `total_solicitado` que estava registrada como "ponto em aberto".
 
 **Onde está a evidência:** commit `dce0728` (spec já corrigida);
-`docs/sessions/01-<nome>.md`, trecho "Revisão da spec — aprovo com 4 ajustes".
+`docs/sessions/01-spec-plan-tasks.md`, trecho "Revisão da spec — aprovo com 4 ajustes".
 
 ### Caso 5 — Precisão numérica: o erro em duas camadas no plan.md
 
@@ -213,8 +213,8 @@ JSON até o Decimal, nos dois rounds de revisão do plan — antes de cada commi
 `test_rf01_valor_inteiro_da_entrada`. O teste
 `test_rf01_valor_335_arredonda_para_34` é o que pegaria a regressão (a).
 
-**Onde está a evidência:** commit do plan.md (`<hash>`);
-`docs/sessions/01-<nome>.md`, trechos "Revisão do plan" e "Correção no DT-004
+**Onde está a evidência:** commit do plan.md (f8fec92);
+`docs/sessions/01-spec-plan-tasks.md`, trechos "Revisão do plan" e "Correção no DT-004
 antes do commit".
 
 **Padrão que eu notei:** Os erros do agente se distribuem em três famílias:
