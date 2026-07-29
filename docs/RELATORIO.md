@@ -18,7 +18,7 @@
 | Identificar ambiguidades | Claude propôs candidatas cruzando política × JSON; eu auditei a lista e completei 3 lacunas (d-005/coworking, d-012/fim de semana, schema de saída como decisão transversal) | Varredura sistemática é força do agente; garantir cobertura crítica é responsabilidade minha |
 | Decidir as ambiguidades | Eu, sempre — o agente foi proibido de decidir via CLAUDE.md (apresenta 2–3 opções + consequência e aguarda) | As decisões são o que este relatório defende; regra 2 das invioláveis |
 | Escrever a spec | Claude materializa a partir das minhas decisões; eu leio linha a linha antes do commit | Redação é rápida para ele; fidelidade à decisão é minha |
-| Desenhar a arquitetura | `<preencher na fase do plan.md>` | |
+| Desenhar a arquitetura | Claude propôs (pipeline de verificadores, separação I/O/motor); eu auditei em dois rounds — as duas correções de precisão numérica do Caso 5 saíram dessa auditoria | Desenho técnico é força dele; a responsabilidade pelo fluxo do dado (leitura → Decimal) foi minha |
 | Implementar | `<preencher na Fase 2>` | |
 | Escrever testes | `<preencher na Fase 2>` | |
 | Absorver o envelope | `<preencher no Dia 2>` | |
@@ -33,7 +33,7 @@
 (spec antes de código; decisões de ambiguidade são do humano; regra de bug de
 spec; convenção de commits; lembrete de /export) e o roteiro das fases em
 prompt-inicial.md. Commit: `docs(claude): consolida regras de trabalho no
-CLAUDE.md e roteiro em prompt-inicial.md` (`<hash>`). Efeito observável: o
+CLAUDE.md e roteiro em prompt-inicial.md` (154f361). Efeito observável: o
 agente passou a apresentar toda ambiguidade em formato opções + consequência e
 a separar sozinho spec de plan (ex.: na AMB-010, apontou que half-up é spec e
 decimal.Decimal é plan).
@@ -56,26 +56,41 @@ verificar antes de prosseguir" (final da AMB-016).
 
 *Como você transformou requisito ambíguo em requisito verificável.*
 
-`<candidato forte: AMB-001 ("R$ 60 por dia") — do texto do RH à regra com
-agregação diária, corte em ordem de lançamento e critério de ordenação
-declarado (ordem do arquivo, desempate por id). Colar a versão 1 e a versão
-final quando o spec.md for materializado, com o hash do commit.>`
+**Requisito escolhido:** limite diário de alimentação (AMB-001 → RF-08).
 
-**Versão 1 (minha primeira escrita):**
+**Versão 1 (o texto do RH, ponto de partida):**
 > ```
-> <colar após materializar o spec.md>
+> Alimentação tem limite de R$ 60 por dia.
 > ```
 
-**Versão final:**
+**Versão final (RF-08 na spec, commit dce0728):**
 > ```
-> <colar>
+> O total reembolsável da categoria alimentacao por dia é limitado a R$ 60,00.
+> O limite é aplicado sobre o agregado diário. As despesas são processadas na
+> ordem do arquivo de entrada; desempate por id em ordem lexicográfica
+> crescente. O saldo disponível para um item é: 60,00 − Σ(valor_reembolsavel
+> dos itens aprovados ou parciais de alimentacao no mesmo dia já processados).
+> - Se saldo > 0 e valor_considerado > saldo: reembolsa o saldo disponível
+>   (LIMITE_DIARIO).
+> - Se saldo = 0: reembolsa R$0,00 (COTA_ESGOTADA).
+> - Se saldo ≥ valor_considerado: reembolsa integralmente.
 > ```
 
-**O que estava ambíguo:** `<preencher>`
+**O que estava ambíguo:** três coisas empilhadas na mesma frase: a unidade de
+aplicação ("por dia" = por despesa ou pelo agregado?), a distribuição do corte
+quando o agregado excede (proporcional? ordem de chegada?) e o critério de
+ordenação que torna o resultado reproduzível (a política não diz o que é
+"primeiro").
 
-**Como percebi:** `<preencher>`
+**Como percebi:** d-001 (R$72,50) e d-002 (R$38,00) no mesmo dia 03/07 tornam
+as leituras divergentes em dinheiro: por despesa → R$98 no dia; agregado →
+R$60. O par existe no JSON exatamente para forçar a decisão. A terceira camada
+(ordenação) apareceu ao escolher corte por ordem de chegada: sem critério de
+desempate declarado, a mesma entrada reordenada daria distribuição diferente.
 
-**Commit da mudança:** `<hash>`
+**Commit da mudança:** `dce0728` (spec v1.0). A distinção
+LIMITE_DIARIO/COTA_ESGOTADA foi refinamento posterior dentro da mesma sessão,
+a partir de lacuna que o próprio agente levantou (ver Delegação).
 
 **Padrão de spec estabelecido (evidência de método):** para toda ambiguidade de
 dado ausente, adotei o mesmo formato — limitação explícita declarada + cláusula
@@ -148,13 +163,71 @@ antes de abrir a sessão) e conferi a lista do agente contra ele.
 **Onde está a evidência:** `docs/sessions/01-<nome>.md`, trecho "Antes de
 decidir a AMB-001".
 
-**Padrão que eu notei:** Os erros do agente até aqui são de *consistência
-interna* (exemplo vs enum) e de *restrições que moram fora do documento em
-foco* (DESAFIO.md vs política). Ele cruza bem política × dados, mas escapam-lhe
-restrições de outro arquivo e contradições entre partes da própria resposta.
-Meu alerta passou a ser: conferir exemplos contra as regras que os acompanham,
-e conferir opções de decisão contra os documentos que o agente não estava
-olhando no momento.
+### Caso 4 — Decisão invertida silenciosamente na materialização da spec
+
+**O que ele propôs:** No spec.md materializado, `valor_original` apareceu como
+"valor como veio na entrada, **normalizado a 2 casas**" — e a então seção 10
+confessava "nesta versão os dois campos são sempre iguais".
+
+**Por que estava errado:** A decisão registrada na AMB-016 era o oposto:
+`valor_original` ecoa a entrada como veio (33.333) justamente para tornar a
+normalização da AMB-010 auditável na saída — o próprio agente havia registrado
+na hora "caso onde os dois campos divergem". Na redação, a decisão virou o
+contrário dela mesma e o campo ficou decorativo.
+
+**Como eu detectei:** Leitura linha a linha da spec materializada contra as
+decisões do chat, antes do commit — exatamente o procedimento declarado na
+seção Diligência.
+
+**O que eu fiz:** Mandei 4 ajustes antes do commit: restaurar `valor_original`
+sem normalização; declarar a exceção na regra de 2 casas (4.2 e RF-14); novos
+aceites no RF-01 e na seção 9 (d-011 → 33.333 / 33.33); e fechar a decisão de
+`total_solicitado` que estava registrada como "ponto em aberto".
+
+**Onde está a evidência:** commit `dce0728` (spec já corrigida);
+`docs/sessions/01-<nome>.md`, trecho "Revisão da spec — aprovo com 4 ajustes".
+
+### Caso 5 — Precisão numérica: o erro em duas camadas no plan.md
+
+**O que ele propôs:** (a) No plan.md v1, o DT-004 armazenava `valor_original`
+como float nativo do `json.load`. (b) Na correção, o agente generalizou:
+afirmou que `parse_float=Decimal` faria inteiros da entrada (`480`) chegarem
+como `Decimal("480")`.
+
+**Por que estava errado:** (a) O float mais próximo de `33.335` é
+`33.334999...`; `Decimal` construído desse float, com half-up a 2 casas, dá
+33.33 — violando o aceite do RF-01 (`33.335 → 33.34`). O agente havia notado o
+sintoma (round-trip da serialização) mas não a causa raiz (precisão perdida na
+construção, antes de qualquer Decimal). (b) `parse_float` só intercepta
+números com parte fracionária; `480` passa pelo `parse_int` e chega como `int`
+Python — quebrando a uniformidade do modelo (`valor_original: Decimal`) que a
+própria correção prometia.
+
+**Como eu detectei:** Rastreando o fluxo do valor desde a string literal do
+JSON até o Decimal, nos dois rounds de revisão do plan — antes de cada commit.
+
+**O que eu fiz:** (a) Mandei reescrever o DT-004 com
+`json.load(parse_float=Decimal)` — o parser recebe a string literal e
+`Decimal("33.335")` é exato. (b) No segundo round, estendi para
+`parse_float=Decimal, parse_int=Decimal` e exigi o teste de aceite
+`test_rf01_valor_inteiro_da_entrada`. O teste
+`test_rf01_valor_335_arredonda_para_34` é o que pegaria a regressão (a).
+
+**Onde está a evidência:** commit do plan.md (`<hash>`);
+`docs/sessions/01-<nome>.md`, trechos "Revisão do plan" e "Correção no DT-004
+antes do commit".
+
+**Padrão que eu notei:** Os erros do agente se distribuem em três famílias:
+(1) *consistência interna* — exemplo contradizendo o enum que o acompanha
+(Caso 2), decisão registrada e depois invertida na redação (Caso 4);
+(2) *restrições fora do documento em foco* — opções que violavam o DESAFIO.md
+enquanto ele olhava só a política (Caso 1); (3) *generalização técnica além do
+que a ferramenta faz* — parse_float estendido mentalmente a inteiros (Caso 5b).
+Ele cruza bem política × dados, mas o risco cresce na *transcrição* (decisão →
+documento) e nos detalhes de comportamento de biblioteca. Meus alertas
+passaram a ser: conferir exemplos contra as regras que os acompanham, reler
+documentos materializados contra as decisões originais, e rastrear o fluxo de
+dados de ponta a ponta em decisões de precisão numérica.
 
 ---
 
@@ -176,8 +249,10 @@ longo do caminho>`
 **Testes: quem escreveu, e como você sabe que eles testam a coisa certa?**
 `<preencher na Fase 2>`
 
-**Pendente registrado:** leitura linha a linha do spec.md materializado antes
-do primeiro commit de spec — registrar aqui como foi e o que ajustei.
+**Leitura de documentos materializados:** feita linha a linha no spec.md antes
+do commit — expôs a inversão do `valor_original` (Caso 4 do Discernimento) e
+resultou em 4 ajustes pré-commit (`dce0728`). Mesmo procedimento aplicado ao
+plan.md, em dois rounds de revisão (Caso 5, `f8fec92`).
 
 ---
 
