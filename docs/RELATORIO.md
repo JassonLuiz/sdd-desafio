@@ -327,6 +327,45 @@ ambiente, resolvia o problema.
 aprovar, falta a resposta mais importante: o que exatamente causou o erro de
 encoding".
 
+### Caso 9 — Decisão original perdida na consolidação, pega antes do teste nascer
+
+**O que ele propôs:** Preparando a T-017 (testes de integração), o agente
+detectou uma contradição de três vias na própria spec sobre o `motivo_texto`
+de `LIMITE_DIARIO` para hospedagem: RF-10 e o critério 9.10 exigiam citar
+"limite de 1 diária aplicado (campo num_diarias ausente do schema)"; a tabela
+de templates do D-001 (T-006) havia generalizado `LIMITE_DIARIO` com um único
+template para todas as categorias, sem essa exceção. O código implementado
+seguia o D-001, contradizendo RF-10/critério 9.10. Ele apresentou três
+opções (manter a generalização, restaurar a exceção, ou um texto híbrido) e
+pediu minha decisão antes de escrever qualquer teste.
+
+**Por que estava errado:** A exigência do texto específico para hospedagem
+não era um detalhe esquecível — era decisão explícita da AMB-003, registrada
+desde a manhã do Dia 1: *"a justificativa dos itens afetados na saída deve
+citar o limite de 1 diária aplicado"*. Quando a tabela de templates unificada
+foi criada na T-006 (D-001), ela generalizou `LIMITE_DIARIO` sem incorporar
+essa exceção anterior — a mesma família de erro do Caso 4 (decisão registrada,
+perdida numa consolidação posterior), desta vez entre duas partes da própria
+spec em vez de entre chat e documento.
+
+**Como eu detectei:** O próprio agente detectou a contradição, cruzando RF-10,
+o critério 9.10 e a tabela D-001 antes de escrever os testes de integração —
+e parou para pedir decisão em vez de silenciar o conflito (regra 3 do
+CLAUDE.md em ação outra vez). Minha parte foi resolver a favor da decisão mais
+antiga (AMB-003), com a justificativa de que ela carregava informação de
+negócio (a limitação do schema) que o template genérico não substitui.
+
+**O que eu fiz:** Mandei registrar D-004 no DECISIONS.md, atualizar a tabela
+4.2 com a exceção de hospedagem explícita, e implementar a condição em
+`motor.py` (`_texto_passo7`) — uma linha extra para `categoria == "hospedagem"`
+antes do template genérico. Os 17 testes de integração da T-017 confirmaram
+o comportamento correto de ponta a ponta (17/17), incluindo d-010 com o texto
+restaurado.
+
+**Onde está a evidência:** commits `3f8c32` (docs/spec: D-004) e `e571ff`
+(feat/T-017: texto especial + 17 testes de integração); sessão 02, trecho
+"Encontrei uma inconsistência de três vias na spec antes de escrever T-017".
+
 **Padrão que eu notei:** Os erros do agente se distribuem em seis famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
 (Caso 2), decisão registrada e depois invertida na redação (Caso 4);
