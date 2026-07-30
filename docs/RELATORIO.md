@@ -268,6 +268,14 @@ representação, não garantia — o mesmo arquivo receberia o teste do 33,335 n
 T-004, e teste de precisão cujo insumo passa por float é frágil por definição.
 Helper corrigido para escrever literais numéricos como texto cru no JSON.
 
+**Fase 2 — exigindo evidência antes de aceitar (T-006):** o agente afirmou que
+`_fmt_valor` (formatação de moeda brasileira por substituição de separadores)
+funcionava para milhares "testado mentalmente" — pedi teste explícito antes de
+aprovar o commit. Os 3 testes (típico, milhar, negativo com milhar) passaram,
+confirmando a formatação. Nenhum bug encontrado desta vez, mas a verificação
+virou evidência permanente reaproveitável, já que `_fmt_valor` é usado em
+todos os verificadores seguintes (T-007 a T-010).
+
 **Li o diff inteiro em que porcentagem das entregas?** `<preencher na Fase 2 —
 honestamente>`
 
