@@ -13,7 +13,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ## Fase 1 — Fundação (setup e modelos)
 
-- [ ] **T-001** — Estrutura de diretórios e configuração de testes
+- [x] **T-001** — Estrutura de diretórios e configuração de testes
   - **O que faz:** cria `src/__init__.py`, `tests/__init__.py`, `tests/conftest.py`
     com fixtures `periodo_padrao`, `colaborador_padrao` e `despesa_factory`;
     cria `pytest.ini` ou `pyproject.toml` com `testpaths = tests`.
