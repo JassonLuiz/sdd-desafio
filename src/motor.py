@@ -73,16 +73,19 @@ def processar(colaborador: Colaborador, periodo: Periodo, despesas_brutas: list[
 
         itens.append(item)
 
-    # TODO (T-014): substituir por cálculo completo —
-    # total_solicitado = Σ valor_considerado dos itens com valor_considerado > 0
+    total_solicitado = sum(
+        (i.valor_considerado for i in itens if i.valor_considerado > Decimal("0.00")),
+        Decimal("0.00"),
+    )
+    total_reembolsavel = sum((i.valor_reembolsavel for i in itens), Decimal("0.00"))
     resumo = Resumo(
-        total_solicitado=Decimal("0.00"),
-        total_reembolsavel=Decimal("0.00"),
-        total_recusado=Decimal("0.00"),
+        total_solicitado=total_solicitado,
+        total_reembolsavel=total_reembolsavel,
+        total_recusado=total_solicitado - total_reembolsavel,
         itens_processados=len(itens),
-        itens_aprovados=0,
-        itens_parciais=0,
-        itens_recusados=0,
+        itens_aprovados=sum(1 for i in itens if i.status == "aprovado"),
+        itens_parciais=sum(1 for i in itens if i.status == "parcial"),
+        itens_recusados=sum(1 for i in itens if i.status == "recusado"),
     )
 
     return Resultado(
