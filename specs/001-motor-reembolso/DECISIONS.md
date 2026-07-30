@@ -10,33 +10,27 @@ Ordem cronológica inversa: a mais recente primeiro.
 
 ---
 
-## D-002 — <título curto> · `<data>`
+## D-001 — Templates de `motivo_texto` formalizados · `2026-07-30`
 
-**Gatilho:** <o que provocou: envelope lacrado / erro descoberto na implementação /
-ambiguidade que só apareceu ao testar / o Claude apontou uma contradição>
+**Gatilho:** Início da implementação de T-006 (verificador passo 2). A spec
+definia `motivo_codigo` e `motivo_texto` como campos obrigatórios de saída, mas
+especificava o texto exato apenas para `CATEGORIA_INVALIDA` e `LIMITE_DIARIO`.
+Os outros cinco códigos (`VALOR_NAO_POSITIVO`, `FORA_COMPETENCIA`, `DUPLICATA`,
+`SEM_NF`, `COTA_ESGOTADA`) ficavam sem template — lacuna detectada antes de
+escrever código.
 
-**O que mudou na spec:** <de → para, citando o ID da regra>
+**O que mudou na spec:** Adicionada tabela "Templates de `motivo_texto` por código"
+na seção 4.2, logo após o enum de `motivo_codigo`. Todos os 7 códigos agora têm
+template explícito com placeholders nomeados.
 
-**Por quê:**
+**Por quê:** Auditabilidade humana é critério do projeto desde AMB-001 (o
+financeiro entende a recusa lendo a saída). Textos interpolados com valores reais
+são mais informativos do que textos genéricos. Estratégia de teste mantida
+consistente com AMB-016: testes afirmam `motivo_codigo`; `motivo_texto` só é
+verificado por substring onde a spec define conteúdo específico.
 
-**O que isso invalidou:** <requisitos, decisões técnicas, testes que caíram>
+**O que isso invalidou:** Nada — era lacuna, não contradição. Nenhum teste
+existente cai; nenhum código existente precisou mudar.
 
-**Tasks afetadas:** <as que precisaram ser refeitas + as novas criadas>
-
-**Custo:** <quantos arquivos tocados, quanto tempo>
-
----
-
-## D-001 — <título curto> · `<data>`
-
-**Gatilho:**
-
-**O que mudou na spec:**
-
-**Por quê:**
-
-**O que isso invalidou:**
-
-**Tasks afetadas:**
-
-**Custo:**
+**Tasks afetadas:** T-006 a T-010 implementam os templates ao construir
+`ResultadoItem`; T-011 implementa `LIMITE_DIARIO` e `COTA_ESGOTADA`.

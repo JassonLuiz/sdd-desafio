@@ -115,6 +115,22 @@ byte a byte idêntica.
 | `LIMITE_DIARIO` | 7 | item cortado parcialmente (saldo disponível > 0,00 mas < `valor_considerado`) |
 | `COTA_ESGOTADA` | 7 | item zerado porque saldo da categoria no dia já era 0,00 |
 
+#### Templates de `motivo_texto` por código
+
+O campo `motivo_texto` é destinado à leitura humana (auditoria pelo financeiro).
+Testes automatizados verificam `motivo_codigo`; `motivo_texto` só é testado por
+substring onde esta tabela exige conteúdo específico.
+
+| Código | Template | Placeholders |
+|---|---|---|
+| `VALOR_NAO_POSITIVO` | `"valor não positivo: R$ <valor>"` | `<valor>` = `valor_considerado` com 2 casas decimais, vírgula decimal |
+| `FORA_COMPETENCIA` | `"data <data> fora do período <inicio> a <fim>"` | datas no formato `AAAA-MM-DD` |
+| `CATEGORIA_INVALIDA` | `"categoria fora da política: <categoria>"` | `<categoria>` = valor normalizado |
+| `DUPLICATA` | `"duplicata de <id>"` | `<id>` = id do item mantido |
+| `SEM_NF` | `"nota fiscal obrigatória para valor acima de R$ 100,00 (valor: R$ <valor>)"` | `<valor>` = `valor_considerado` com 2 casas decimais, vírgula decimal |
+| `LIMITE_DIARIO` | `"limite diário de <categoria>: reembolsado R$ <reembolsavel> de R$ <considerado>"` | valores com 2 casas decimais, vírgula decimal |
+| `COTA_ESGOTADA` | `"cota diária de <categoria> esgotada"` | `<categoria>` = categoria normalizada |
+
 #### Exemplo de saída (3 itens ilustrativos)
 
 ```json
