@@ -55,7 +55,8 @@ que a spec era omissa sobre `motivo_texto` para 4 dos 7 códigos de motivo
 (definia apenas `CATEGORIA_INVALIDA` e `LIMITE_DIARIO`/`COTA_ESGOTADA`
 explicitamente) e parou para pedir decisão em vez de inventar texto —
 comportamento induzido pela regra 3 do CLAUDE.md ("explicação que não está na
-spec é bug de spec"). Virou a primeira entrada do `DECISIONS.md` do projeto.
+spec é bug de spec"). Virou a primeira entrada do `DECISIONS.md` do projeto
+(commit `7919f17`).
 
 ---
 
