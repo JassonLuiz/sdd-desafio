@@ -16,7 +16,7 @@ def _recusar(despesa: Despesa, motivo_codigo: str, motivo_texto: str, duplicata_
     )
 
 
-def _fmt_valor(v: Decimal) -> str:
+def fmt_valor(v: Decimal) -> str:
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
@@ -26,7 +26,7 @@ GATILHO_NF = Decimal("100.00")
 
 def verificar_nf(despesa: Despesa) -> ResultadoItem | None:
     if despesa.valor_considerado > GATILHO_NF and not despesa.tem_nota_fiscal:
-        texto = f"nota fiscal obrigatória para valor acima de R$ 100,00 (valor: {_fmt_valor(despesa.valor_considerado)})"
+        texto = f"nota fiscal obrigatória para valor acima de R$ 100,00 (valor: {fmt_valor(despesa.valor_considerado)})"
         return _recusar(despesa, "SEM_NF", texto)
     return None
 
@@ -62,6 +62,6 @@ def verificar_competencia(despesa: Despesa, periodo: Periodo) -> ResultadoItem |
 
 def verificar_dominio_valor(despesa: Despesa) -> ResultadoItem | None:
     if despesa.valor_considerado <= Decimal("0.00"):
-        texto = f"valor não positivo: {_fmt_valor(despesa.valor_considerado)}"
+        texto = f"valor não positivo: {fmt_valor(despesa.valor_considerado)}"
         return _recusar(despesa, "VALOR_NAO_POSITIVO", texto)
     return None

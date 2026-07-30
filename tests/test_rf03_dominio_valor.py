@@ -1,20 +1,20 @@
 from decimal import Decimal
 
-from src.regras import verificar_dominio_valor, _fmt_valor
+from src.regras import verificar_dominio_valor, fmt_valor
 
 
-# --- testes de _fmt_valor ---
+# --- testes de fmt_valor ---
 
 def test_fmt_valor_tipico():
-    assert _fmt_valor(Decimal("690.00")) == "R$ 690,00"
+    assert fmt_valor(Decimal("690.00")) == "R$ 690,00"
 
 
 def test_fmt_valor_com_milhar():
-    assert _fmt_valor(Decimal("1234.56")) == "R$ 1.234,56"
+    assert fmt_valor(Decimal("1234.56")) == "R$ 1.234,56"
 
 
 def test_fmt_valor_negativo_com_milhar():
-    assert _fmt_valor(Decimal("-1234.56")) == "R$ -1.234,56"
+    assert fmt_valor(Decimal("-1234.56")) == "R$ -1.234,56"
 
 
 # --- testes de verificar_dominio_valor (RF-03) ---

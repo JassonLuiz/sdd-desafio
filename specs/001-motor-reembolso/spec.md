@@ -132,7 +132,7 @@ substring onde esta tabela exige conteúdo específico.
 | `DUPLICATA` | `"duplicata de <id>"` | `<id>` = id do item mantido |
 | `SEM_NF` | `"nota fiscal obrigatória para valor acima de R$ 100,00 (valor: R$ <valor>)"` | `<valor>` = `valor_considerado` com 2 casas decimais, vírgula decimal |
 | `LIMITE_DIARIO` | `"limite diário de <categoria>: reembolsado R$ <reembolsavel> de R$ <considerado>"` | valores com 2 casas decimais, vírgula decimal |
-| `COTA_ESGOTADA` | `"cota diária de <categoria> esgotada"` | `<categoria>` = categoria normalizada |
+| `COTA_ESGOTADA` | `"cota diária de <categoria> esgotada: R$ <limite> já consumidos por itens anteriores no dia"` | `<limite>` = `LIMITE_DIARIO[categoria]` com 2 casas decimais, vírgula decimal |
 
 #### Exemplo de saída (3 itens ilustrativos)
 

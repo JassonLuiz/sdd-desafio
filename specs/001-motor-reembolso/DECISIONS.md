@@ -10,6 +10,30 @@ Ordem cronológica inversa: a mais recente primeiro.
 
 ---
 
+## D-003 — Template de COTA_ESGOTADA refinado com valor do limite · `2026-07-30`
+
+**Gatilho:** Revisão de desenho da T-012 (pipeline). O template inicial de
+`COTA_ESGOTADA` dizia apenas `"cota diária de <cat> esgotada"`. A revisão
+lembrou que COTA_ESGOTADA e LIMITE_DIARIO foram criados como códigos distintos
+(AMB-016) precisamente porque o texto deve explicar ao financeiro *por que* o
+item foi zerado — e "esgotada" sem contexto não comunica o valor já consumido,
+deixando a auditoria incompleta.
+
+**O que mudou na spec:** Template de `COTA_ESGOTADA` na tabela de `motivo_texto`
+(seção 4.2) alterado de `"cota diária de <cat> esgotada"` para
+`"cota diária de <cat> esgotada: R$ <limite> já consumidos por itens anteriores no dia"`.
+
+**Por quê:** Auditabilidade humana — o financeiro entende a recusa lendo a saída
+(critério desde AMB-001). Citar o limite consumido torna a explicação completa
+sem exigir consulta a tabelas externas.
+
+**O que isso invalidou:** Nada — template era omisso, não errado. Nenhum teste
+cai; nenhum código existente muda (T-012 ainda não estava implementada).
+
+**Tasks afetadas:** T-012 implementa o template corrigido.
+
+---
+
 ## D-002 — Escopo negativo: unicidade de id não validada · `2026-07-30`
 
 **Gatilho:** Revisão de desenho da T-011 (`GerenciadorCotas`). A chave de
