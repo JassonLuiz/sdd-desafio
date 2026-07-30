@@ -10,6 +10,28 @@ Ordem cronológica inversa: a mais recente primeiro.
 
 ---
 
+## D-002 — Escopo negativo: unicidade de id não validada · `2026-07-30`
+
+**Gatilho:** Revisão de desenho da T-011 (`GerenciadorCotas`). A chave de
+bucket de hospedagem usa `despesa.id` para garantir limite por lançamento
+(RF-10/AMB-003). Isso expôs que dois itens com o mesmo `id` mas dados
+diferentes compartilhariam o bucket — e que RF-06 (duplicatas) não pegaria
+esse caso porque sua chave inclui os demais campos, não só o id.
+
+**O que mudou na spec:** Adicionada linha ao escopo negativo (seção 3):
+"Este sistema não valida unicidade de `id` na entrada".
+
+**Por quê:** A garantia "id único no lote" era implícita e nunca declarada.
+Torná-la explícita no escopo negativo deixa claro que comportamento com ids
+repetidos é indefinido — e isenta o sistema de responsabilidade por isso.
+
+**O que isso invalidou:** Nada — era omissão, não contradição. Nenhum teste
+cai; nenhum código muda.
+
+**Tasks afetadas:** Nenhuma refeita; T-011 implementa com ciência da limitação.
+
+---
+
 ## D-001 — Templates de `motivo_texto` formalizados · `2026-07-30`
 
 **Gatilho:** Início da implementação de T-006 (verificador passo 2). A spec

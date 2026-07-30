@@ -42,6 +42,9 @@ da decisão em formato auditável e reproduzível.
 - Este sistema não persiste estado entre execuções; cada execução é
   independente.
 - Este sistema não valida a existência do colaborador nem do centro de custo.
+- Este sistema não valida unicidade de `id` na entrada; ids repetidos com dados
+  diferentes passam despercebidos (RF-06 só detecta coincidência de todos os
+  campos da chave de duplicata, não de id isolado).
 - Este sistema não detecta duplicatas por similaridade — apenas por
   coincidência exata de campos (ver AMB-007).
 
