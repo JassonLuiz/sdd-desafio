@@ -353,6 +353,17 @@ vieram limpas (45/45, zero ocorrências) antes de eu aprovar o commit. O
 princípio: até um erro auto-reportado de boa-fé precisa de prova nova, não de
 confiança na palavra de quem o cometeu.
 
+**Fase 2 — exigindo eliminação estrutural de risco em vez de suposição de
+improbabilidade (T-015):** o serializador usava um sentinel fixo (`"##NUM##"`)
+para preservar dígitos literais de `Decimal` na saída JSON — risco real de
+colisão com texto de entrada não controlado (`descricao`, `fornecedor`,
+`nome`), aceito pelo agente como "não acontece na prática". Exigi token
+aleatório por chamada (`uuid.uuid4().hex`), que elimina a colisão por
+construção matemática, não por suposição sobre os dados. Também exigi que os
+testes de precisão verificassem a string literal do JSON, não o valor após
+`json.loads()` — que não distingue `480` de `480.0`, escondendo exatamente a
+falha que a técnica existe para evitar.
+
 **Li o diff inteiro em que porcentagem das entregas?** `<preencher na Fase 2 —
 honestamente>`
 
