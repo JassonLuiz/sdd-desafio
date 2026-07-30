@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from src.modelos import Despesa, ResultadoItem
+from src.modelos import Despesa, Periodo, ResultadoItem
 
 
 def _recusar(despesa: Despesa, motivo_codigo: str, motivo_texto: str, duplicata_de: str | None = None) -> ResultadoItem:
@@ -18,6 +18,13 @@ def _recusar(despesa: Despesa, motivo_codigo: str, motivo_texto: str, duplicata_
 
 def _fmt_valor(v: Decimal) -> str:
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def verificar_competencia(despesa: Despesa, periodo: Periodo) -> ResultadoItem | None:
+    if despesa.data < periodo.inicio or despesa.data > periodo.fim:
+        texto = f"data {despesa.data} fora do período {periodo.inicio} a {periodo.fim}"
+        return _recusar(despesa, "FORA_COMPETENCIA", texto)
+    return None
 
 
 def verificar_dominio_valor(despesa: Despesa) -> ResultadoItem | None:
