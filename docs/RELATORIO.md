@@ -217,6 +217,13 @@ JSON até o Decimal, nos dois rounds de revisão do plan — antes de cada commi
 `docs/sessions/01-spec-plan-tasks.md`, trechos "Revisão do plan" e "Correção no DT-004
 antes do commit".
 
+**Adendo (Fase 2):** a mesma família de erro reapareceu no código de *teste* —
+na T-003, o helper de fixtures passava o valor por float Python antes de
+serializar o JSON, e o agente defendeu a suficiência com o argumento do repr
+mínimo. Barrado pelo mesmo princípio: em precisão numérica, o caminho do dado
+importa mais que o resultado do caso feliz. Evidência: sessão 02, trecho
+"Quase aprovado — um ajuste no helper".
+
 **Padrão que eu notei:** Os erros do agente se distribuem em três famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
 (Caso 2), decisão registrada e depois invertida na redação (Caso 4);
@@ -239,6 +246,13 @@ dados de ponta a ponta em decisões de precisão numérica.
 opções e consequências à vista; toda resposta minha levou justificativa em uma
 linha, escrita por mim. Para o schema de saída, montei checklist prévia e
 auditei a proposta contra ela — foi o que expôs o Caso 2.
+
+**Fase 2 — verificação de código (em andamento):** T-003: o agente defendeu
+que passar o valor por float no helper de teste era suficiente "porque o repr
+do Python emite o literal mínimo"; apontei que isso era acidente de
+representação, não garantia — o mesmo arquivo receberia o teste do 33,335 na
+T-004, e teste de precisão cujo insumo passa por float é frágil por definição.
+Helper corrigido para escrever literais numéricos como texto cru no JSON.
 
 **Li o diff inteiro em que porcentagem das entregas?** `<preencher na Fase 2 —
 honestamente>`
