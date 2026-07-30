@@ -10,6 +10,39 @@ Ordem cronológica inversa: a mais recente primeiro.
 
 ---
 
+## D-004 — Template de LIMITE_DIARIO para hospedagem é exceção ao padrão · `2026-07-30`
+
+**Gatilho:** Revisão pré-T-017. Ao montar os critérios de aceite do item d-010,
+foi detectada contradição entre três fontes na spec: RF-10/AMB-003 exigia
+`motivo_texto` citando `"limite de 1 diária aplicado"` desde a decisão original;
+a tabela D-001 generalizou `LIMITE_DIARIO` com um template único sem essa exceção;
+e a seção 9 (critério 10) ainda citava `"limite de 1 diária aplicado"` — herdado
+de RF-10, mas incompatível com D-001.
+
+**Decisão:** Honrar AMB-003 — a decisão mais antiga e a razão de existir do
+código de motivo `LIMITE_DIARIO` para hospedagem. Quando `categoria == "hospedagem"`
+e `motivo_codigo == "LIMITE_DIARIO"`, `motivo_texto` é sempre
+`"limite de 1 diária aplicado (campo num_diarias ausente do schema)"`.
+Para todas as outras categorias, `LIMITE_DIARIO` usa o template genérico de D-001.
+
+**O que mudou na spec:** Tabela de templates (seção 4.2) ganhou uma linha
+separada para `LIMITE_DIARIO (hospedagem)`. RF-10 e critério 9.10 já estavam
+corretos e foram mantidos.
+
+**Por quê:** AMB-003 é a decisão que justificou a existência do limite por
+lançamento (em vez de por dia) para hospedagem. O texto especial carrega a
+justificativa arquitetural — sem ele o financeiro não sabe por que R$480 virou
+R$250 sem referência à "2 diárias" descrita no campo.
+
+**O que isso invalidou:** Template genérico de D-001 para `LIMITE_DIARIO`
+permanece válido para `alimentacao` e `transporte_urbano`. Nenhum teste
+existente cai.
+
+**Tasks afetadas:** T-012 (`_texto_passo7` em `motor.py`) precisa de uma linha
+adicional; T-017 verifica `motivo_texto` de d-010 por substring `"limite de 1 diária"`.
+
+---
+
 ## D-003 — Template de COTA_ESGOTADA refinado com valor do limite · `2026-07-30`
 
 **Gatilho:** Revisão de desenho da T-012 (pipeline). O template inicial de

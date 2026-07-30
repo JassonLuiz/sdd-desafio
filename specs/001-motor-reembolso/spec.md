@@ -131,7 +131,8 @@ substring onde esta tabela exige conteúdo específico.
 | `CATEGORIA_INVALIDA` | `"categoria fora da política: <categoria>"` | `<categoria>` = valor normalizado |
 | `DUPLICATA` | `"duplicata de <id>"` | `<id>` = id do item mantido |
 | `SEM_NF` | `"nota fiscal obrigatória para valor acima de R$ 100,00 (valor: R$ <valor>)"` | `<valor>` = `valor_considerado` com 2 casas decimais, vírgula decimal |
-| `LIMITE_DIARIO` | `"limite diário de <categoria>: reembolsado R$ <reembolsavel> de R$ <considerado>"` | valores com 2 casas decimais, vírgula decimal |
+| `LIMITE_DIARIO` | `"limite diário de <categoria>: reembolsado R$ <reembolsavel> de R$ <considerado>"` | valores com 2 casas decimais, vírgula decimal; **exceto `hospedagem`** — ver linha abaixo |
+| `LIMITE_DIARIO` (hospedagem) | `"limite de 1 diária aplicado (campo num_diarias ausente do schema)"` | exceção: `num_diarias` ausente do schema; `motivo_codigo` permanece `LIMITE_DIARIO` (RF-10, AMB-003, D-004) |
 | `COTA_ESGOTADA` | `"cota diária de <categoria> esgotada: R$ <limite> já consumidos por itens anteriores no dia"` | `<limite>` = `LIMITE_DIARIO[categoria]` com 2 casas decimais, vírgula decimal |
 
 #### Exemplo de saída (3 itens ilustrativos)
