@@ -343,6 +343,16 @@ confirmando a formatação. Nenhum bug encontrado desta vez, mas a verificação
 virou evidência permanente reaproveitável, já que `_fmt_valor` é usado em
 todos os verificadores seguintes (T-007 a T-010).
 
+**Fase 2 — exigindo prova nova em vez de afirmação de correção (T-012):** o
+agente relatou um bug de `replace_all` (renomeação de `_fmt_valor` para
+`fmt_valor`) que teria sido "detectado e corrigido antes do commit" — recusei
+aceitar a afirmação sozinha, porque a suíte de 45/45 mostrada era anterior à
+correção. Exigi: (1) nova rodada completa da suíte, do zero, pós-correção;
+(2) grep no repositório inteiro por resquícios do nome corrompido. As duas
+vieram limpas (45/45, zero ocorrências) antes de eu aprovar o commit. O
+princípio: até um erro auto-reportado de boa-fé precisa de prova nova, não de
+confiança na palavra de quem o cometeu.
+
 **Li o diff inteiro em que porcentagem das entregas?** `<preencher na Fase 2 —
 honestamente>`
 
