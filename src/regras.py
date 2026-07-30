@@ -23,6 +23,21 @@ def _fmt_valor(v: Decimal) -> str:
 CATEGORIAS_VALIDAS = {"alimentacao", "transporte_urbano", "hospedagem"}
 
 
+def verificar_duplicata(despesa: Despesa, vistos: dict) -> ResultadoItem | None:
+    chave = (
+        despesa.data,
+        despesa.categoria,
+        despesa.descricao,
+        despesa.fornecedor,
+        despesa.valor_considerado,
+        despesa.tem_nota_fiscal,
+    )
+    if chave in vistos:
+        return _recusar(despesa, "DUPLICATA", f"duplicata de {vistos[chave]}", duplicata_de=vistos[chave])
+    vistos[chave] = despesa.id
+    return None
+
+
 def verificar_categoria(despesa: Despesa) -> ResultadoItem | None:
     if despesa.categoria not in CATEGORIAS_VALIDAS:
         texto = f"categoria fora da política: {despesa.categoria}"
