@@ -21,7 +21,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
   - **Aceite:** `pytest` coleta 0 testes sem erro; fixtures importáveis
   - **Commit:** ` `
 
-- [ ] **T-002** — Modelos de dados (`src/modelos.py`)
+- [x] **T-002** — Modelos de dados (`src/modelos.py`)
   - **O que faz:** define os dataclasses `Colaborador`, `Periodo`, `DespesaBruta`,
     `Despesa`, `ResultadoItem` e `Resultado` conforme o modelo de dados do plan.
     Todos os campos monetários tipados como `Decimal`.
