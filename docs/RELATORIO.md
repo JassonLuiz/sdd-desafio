@@ -238,17 +238,47 @@ mínimo. Barrado pelo mesmo princípio: em precisão numérica, o caminho do dad
 importa mais que o resultado do caso feliz. Evidência: sessão 02, trecho
 "Quase aprovado — um ajuste no helper".
 
-**Padrão que eu notei:** Os erros do agente se distribuem em três famílias:
+### Caso 6 — Teste cujo nome prometia mais do que exercitava
+
+**O que ele propôs:** Na T-008 (verificador de categoria inválida), o teste
+`test_rf05_categoria_apos_normalizacao_aceita` usava `categoria="alimentacao"`
+já em minúscula na factory — não exercitava nenhuma normalização, apenas
+confirmava que uma categoria já válida passa.
+
+**Por que estava errado:** O aceite original da task era `"ALIMENTACAO"`
+normalizada → aceita, que prova a cadeia `normalizar_categoria() →
+verificar_categoria()`. Um teste verde com esse nome escondia a ausência real
+de cobertura: se o pipeline (T-012) um dia esquecesse de normalizar antes de
+verificar, este teste continuaria passando, e o buraco só apareceria (se
+apareceu) na integração — longe da causa.
+
+**Como eu detectei:** Lendo o corpo do teste contra o que o nome prometia, não
+apenas confirmando que ele passava. "Teste verde" não é sinônimo de "teste
+certo".
+
+**O que eu fiz:** Mandei renomear o teste trivial para o que ele de fato faz
+(`test_rf05_categoria_valida_aceita`) e adicionar um teste novo que simula o
+pipeline em miniatura — chama `normalizar_categoria("ALIMENTACAO")` e só então
+`verificar_categoria()` com o resultado, provando a cadeia real
+(`test_rf05_maiusculas_normalizadas_e_aceitas`).
+
+**Onde está a evidência:** sessão 02, trecho "Antes de aprovar: o teste
+test_rf05_categoria_apos_normalizacao_aceita não testa o que o nome promete".
+
+**Padrão que eu notei:** Os erros do agente se distribuem em quatro famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
 (Caso 2), decisão registrada e depois invertida na redação (Caso 4);
 (2) *restrições fora do documento em foco* — opções que violavam o DESAFIO.md
 enquanto ele olhava só a política (Caso 1); (3) *generalização técnica além do
-que a ferramenta faz* — parse_float estendido mentalmente a inteiros (Caso 5b).
-Ele cruza bem política × dados, mas o risco cresce na *transcrição* (decisão →
-documento) e nos detalhes de comportamento de biblioteca. Meus alertas
-passaram a ser: conferir exemplos contra as regras que os acompanham, reler
-documentos materializados contra as decisões originais, e rastrear o fluxo de
-dados de ponta a ponta em decisões de precisão numérica.
+que a ferramenta faz* — parse_float estendido mentalmente a inteiros (Caso 5b);
+(4) *teste que não exercita o que o nome promete* — cobertura aparente sem
+cobertura real (Caso 6). Ele cruza bem política × dados, mas o risco cresce na
+*transcrição* (decisão → documento), nos detalhes de comportamento de
+biblioteca, e na fidelidade entre o nome de um teste e o que ele de fato
+verifica. Meus alertas passaram a ser: conferir exemplos contra as regras que
+os acompanham, reler documentos materializados contra as decisões originais,
+rastrear o fluxo de dados de ponta a ponta em decisões de precisão numérica, e
+ler o corpo de cada teste contra o nome, não só conferir se ele passa.
 
 ---
 
