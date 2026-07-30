@@ -20,6 +20,8 @@ def _texto_passo7(categoria: str, motivo_codigo: str | None, valor_reembolsavel:
     if motivo_codigo is None:
         return None
     if motivo_codigo == "LIMITE_DIARIO":
+        if categoria == "hospedagem":
+            return "limite de 1 diária aplicado (campo num_diarias ausente do schema)"
         return f"limite diário de {categoria}: reembolsado {fmt_valor(valor_reembolsavel)} de {fmt_valor(valor_considerado)}"
     if motivo_codigo == "COTA_ESGOTADA":
         limite = LIMITE_DIARIO[categoria]
