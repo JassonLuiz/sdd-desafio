@@ -20,6 +20,16 @@ def _fmt_valor(v: Decimal) -> str:
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+CATEGORIAS_VALIDAS = {"alimentacao", "transporte_urbano", "hospedagem"}
+
+
+def verificar_categoria(despesa: Despesa) -> ResultadoItem | None:
+    if despesa.categoria not in CATEGORIAS_VALIDAS:
+        texto = f"categoria fora da política: {despesa.categoria}"
+        return _recusar(despesa, "CATEGORIA_INVALIDA", texto)
+    return None
+
+
 def verificar_competencia(despesa: Despesa, periodo: Periodo) -> ResultadoItem | None:
     if despesa.data < periodo.inicio or despesa.data > periodo.fim:
         texto = f"data {despesa.data} fora do período {periodo.inicio} a {periodo.fim}"
