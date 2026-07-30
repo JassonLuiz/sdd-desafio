@@ -21,6 +21,14 @@ def _fmt_valor(v: Decimal) -> str:
 
 
 CATEGORIAS_VALIDAS = {"alimentacao", "transporte_urbano", "hospedagem"}
+GATILHO_NF = Decimal("100.00")
+
+
+def verificar_nf(despesa: Despesa) -> ResultadoItem | None:
+    if despesa.valor_considerado > GATILHO_NF and not despesa.tem_nota_fiscal:
+        texto = f"nota fiscal obrigatória para valor acima de R$ 100,00 (valor: {_fmt_valor(despesa.valor_considerado)})"
+        return _recusar(despesa, "SEM_NF", texto)
+    return None
 
 
 def verificar_duplicata(despesa: Despesa, vistos: dict) -> ResultadoItem | None:
