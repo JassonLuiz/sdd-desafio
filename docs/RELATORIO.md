@@ -289,10 +289,14 @@ o bug não aparecia em nenhum teste possível com os dados do exemplo.
 categoria)` em vez de `(data, categoria)`, garantindo bucket único por
 lançamento, nunca compartilhado entre itens do mesmo dia. Exigi um teste novo
 na T-011 cobrindo exatamente esse caso (duas hospedagens no mesmo dia, ambas
-dentro do limite, ambas aprovadas integralmente).
+dentro do limite, ambas aprovadas integralmente) —
+`test_rf10_duas_hospedagens_mesmo_dia_independentes`. A revisão de desenho
+também expôs uma segunda lacuna (unicidade de `id` nunca validada), registrada
+como D-002 no DECISIONS.md e como linha nova do escopo negativo da spec.
 
-**Onde está a evidência:** sessão 02, trecho "Antes de codar, um problema real
-no desenho".
+**Onde está a evidência:** commit `e7c8a3` (`src/cotas.py`,
+`tests/test_rf08_rf09_rf10_cotas.py`, spec.md e DECISIONS.md D-002); sessão
+02, trecho "Antes de codar, um problema real no desenho".
 
 **Padrão que eu notei:** Os erros do agente se distribuem em cinco famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
