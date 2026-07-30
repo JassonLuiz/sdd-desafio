@@ -298,7 +298,36 @@ como D-002 no DECISIONS.md e como linha nova do escopo negativo da spec.
 `tests/test_rf08_rf09_rf10_cotas.py`, spec.md e DECISIONS.md D-002); sessão
 02, trecho "Antes de codar, um problema real no desenho".
 
-**Padrão que eu notei:** Os erros do agente se distribuem em cinco famílias:
+### Caso 8 — Bug real de portabilidade escondido atrás de correção de ambiente
+
+**O que ele propôs:** Na T-016 (CLI), os testes passaram depois de uma
+correção que ele descreveu apenas como "corrigir o encoding do subprocess" —
+sem detalhar onde a correção morava.
+
+**Por que estava errado:** A correção real estava só no ambiente de teste
+(`PYTHONIOENCODING=utf-8` passado no `subprocess.run` do pytest), não no
+código do `cli.py`. Isso escondia um bug real de portabilidade: qualquer
+pessoa rodando `python -m src.cli` diretamente no Windows sem essa variável
+receberia mensagens de erro em `cp1252`, quebrando qualquer captura de
+`stderr` esperando UTF-8 — exatamente o tipo de coisa que travaria a correção
+do instrutor se rodada em Windows sem configuração extra.
+
+**Como eu detectei:** Recusei aceitar "corrigi o encoding" sem a localização
+exata da correção — a mesma exigência de prova nova do episódio do
+`replace_all` (T-012, ver Diligência). Perguntei diretamente se a correção
+estava no código ou só no ambiente de teste.
+
+**O que eu fiz:** Mandei mover a correção para dentro do `cli.py`
+(`sys.stdout.reconfigure(encoding="utf-8")` e `sys.stderr.reconfigure(...)`)
+e exigi que o teste comprovasse funcionar **sem** a variável de ambiente —
+removendo o `PYTHONIOENCODING` do teste para provar que o código, e não o
+ambiente, resolvia o problema.
+
+**Onde está a evidência:** commit `39c218`; sessão 02, trecho "Antes de
+aprovar, falta a resposta mais importante: o que exatamente causou o erro de
+encoding".
+
+**Padrão que eu notei:** Os erros do agente se distribuem em seis famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
 (Caso 2), decisão registrada e depois invertida na redação (Caso 4);
 (2) *restrições fora do documento em foco* — opções que violavam o DESAFIO.md
@@ -307,15 +336,16 @@ que a ferramenta faz* — parse_float estendido mentalmente a inteiros (Caso 5b)
 (4) *teste que não exercita o que o nome promete* — cobertura aparente sem
 cobertura real (Caso 6); (5) *desenho que generaliza uma regra que não deveria
 ser generalizada* — mesma estrutura de estado aplicada a categorias com
-semânticas diferentes (Caso 7). Este último é o mais valioso: foi pego na
-etapa de desenho, antes de qualquer código ou teste existir — evidência de que
-a pausa obrigatória antes de tasks críticas (regra do CLAUDE.md) funciona na
-prática. Meus alertas passaram a ser: conferir exemplos contra as regras que
-os acompanham, reler documentos materializados contra as decisões originais,
-rastrear o fluxo de dados de ponta a ponta em decisões de precisão numérica,
-ler o corpo de cada teste contra o nome, e confrontar toda estrutura de estado
-proposta contra o texto da spec categoria por categoria, não só contra os
-dados de exemplo disponíveis.
+semânticas diferentes (Caso 7); (6) *correção de sintoma em vez de causa* —
+ambiente de teste ajustado para mascarar um bug que continuava vivo no código
+de produção (Caso 8). O Caso 7 continua o mais valioso por ter sido pego na
+etapa de desenho, antes de qualquer código existir. Meus alertas passaram a
+ser: conferir exemplos contra as regras que os acompanham, reler documentos
+materializados contra as decisões originais, rastrear o fluxo de dados de
+ponta a ponta em decisões de precisão numérica, ler o corpo de cada teste
+contra o nome, confrontar toda estrutura de estado proposta contra o texto da
+spec categoria por categoria, e perguntar sempre "essa correção está no
+código ou só no ambiente que a está testando?".
 
 ---
 
