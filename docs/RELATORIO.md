@@ -366,6 +366,35 @@ restaurado.
 (feat/T-017: texto especial + 17 testes de integração); sessão 02, trecho
 "Encontrei uma inconsistência de três vias na spec antes de escrever T-017".
 
+### Caso 10 — Números inventados no README, corrigidos por iniciativa própria
+
+**O que ele propôs:** Na T-019 (README), o exemplo de saída trazia valores de
+`resumo` plausíveis mas nunca verificados contra a execução real
+(`total_solicitado: 1122.52`, `itens_aprovados: 4`).
+
+**Por que estava errado:** Os valores reais, obtidos rodando a CLI contra
+`exemplos/despesas-exemplo.json`, eram diferentes (`total_solicitado: 1861.84`,
+`itens_aprovados: 3`). Um README com números plausíveis mas falsos não quebra
+teste nenhum — é o tipo de erro que sobrevive silenciosamente até alguém
+comparar manualmente, corroendo a credibilidade do documento sem nenhum sinal
+de alarme.
+
+**Como eu detectei:** Não detectei — esta foi a instância em que o próprio
+agente aplicou por iniciativa própria o princípio de "prova, não afirmação"
+que vinha sendo exigido dele o dia inteiro (episódios do `replace_all`, do
+sentinel de serialização, do encoding). Antes de eu revisar o diff, ele rodou
+a CLI, comparou os números do README com a saída real, encontrou a divergência
+e corrigiu sozinho, relatando "os valores que coloquei no README estavam
+errados. Corrijo antes de commitar."
+
+**O que eu fiz:** Confirmei a correção e aprovei o commit. Registro este caso
+não como falha minha em pegar o erro, mas como evidência de que a disciplina
+de verificação exigida ao longo do dia foi internalizada e generalizada para
+uma tarefa (README) onde ninguém tinha pedido explicitamente essa checagem.
+
+**Onde está a evidência:** commit `d2a3b6`; sessão 02, trecho "Os valores que
+coloquei no README estavam errados. Corrijo antes de commitar."
+
 **Padrão que eu notei:** Os erros do agente se distribuem em seis famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
 (Caso 2), decisão registrada e depois invertida na redação (Caso 4);
