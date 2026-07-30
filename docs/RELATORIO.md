@@ -19,7 +19,7 @@
 | Decidir as ambiguidades | Eu, sempre — o agente foi proibido de decidir via CLAUDE.md (apresenta 2–3 opções + consequência e aguarda) | As decisões são o que este relatório defende; regra 2 das invioláveis |
 | Escrever a spec | Claude materializa a partir das minhas decisões; eu leio linha a linha antes do commit | Redação é rápida para ele; fidelidade à decisão é minha |
 | Desenhar a arquitetura | Claude propôs (pipeline de verificadores, separação I/O/motor); eu auditei em dois rounds — as duas correções de precisão numérica do Caso 5 saíram dessa auditoria | Desenho técnico é força dele; a responsabilidade pelo fluxo do dado (leitura → Decimal) foi minha |
-| Implementar | `<preencher na Fase 2>` | |
+| Implementar | Claude escreve o código task por task; eu revisei o desenho por escrito antes de qualquer `Write` nas tasks críticas (regra do CLAUDE.md) — foi essa pausa que expôs o Caso 7 | Escrita é rápida para ele; desenho de estado é onde bugs silenciosos se escondem, e revisar por escrito antes do código é mais barato que depurar depois |
 | Escrever testes | `<preencher na Fase 2>` | |
 | Absorver o envelope | `<preencher no Dia 2>` | |
 
@@ -265,20 +265,53 @@ pipeline em miniatura — chama `normalizar_categoria("ALIMENTACAO")` e só ent�
 **Onde está a evidência:** sessão 02, trecho "Antes de aprovar: o teste
 test_rf05_categoria_apos_normalizacao_aceita não testa o que o nome promete".
 
-**Padrão que eu notei:** Os erros do agente se distribuem em quatro famílias:
+### Caso 7 — Bug de desenho pego antes de qualquer código nascer (T-011)
+
+**O que ele propôs:** Antes de implementar o `GerenciadorCotas` (T-011), o
+desenho usava a chave `(data, categoria)` para todas as três categorias
+(alimentação, transporte, hospedagem) no dicionário de estado de cotas.
+
+**Por que estava errado:** RF-10/AMB-003 declaram explicitamente que
+hospedagem **não** tem acumulação diária — "o limite de R$ 250,00 se aplica
+por item, não por dia". Com a chave `(data, categoria)` compartilhada, duas
+despesas de hospedagem no mesmo dia dividiriam incorretamente um único limite
+de R$ 250,00 em vez de ter R$ 250,00 cada. O bug era silencioso com os dados
+do `exemplos/despesas-exemplo.json` (d-010 e d-013 caem em dias diferentes),
+mas ativo com qualquer caso oculto ou do envelope que trouxesse duas
+hospedagens no mesmo dia.
+
+**Como eu detectei:** Pedi o desenho por escrito *antes* de qualquer `Write`
+(regra do CLAUDE.md: pausa obrigatória antes da T-011) e confrontei a
+estrutura de chave proposta contra o texto do RF-10, não contra os testes —
+o bug não aparecia em nenhum teste possível com os dados do exemplo.
+
+**O que eu fiz:** Mandei corrigir a chave para hospedagem: `(despesa.id,
+categoria)` em vez de `(data, categoria)`, garantindo bucket único por
+lançamento, nunca compartilhado entre itens do mesmo dia. Exigi um teste novo
+na T-011 cobrindo exatamente esse caso (duas hospedagens no mesmo dia, ambas
+dentro do limite, ambas aprovadas integralmente).
+
+**Onde está a evidência:** sessão 02, trecho "Antes de codar, um problema real
+no desenho".
+
+**Padrão que eu notei:** Os erros do agente se distribuem em cinco famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
 (Caso 2), decisão registrada e depois invertida na redação (Caso 4);
 (2) *restrições fora do documento em foco* — opções que violavam o DESAFIO.md
 enquanto ele olhava só a política (Caso 1); (3) *generalização técnica além do
 que a ferramenta faz* — parse_float estendido mentalmente a inteiros (Caso 5b);
 (4) *teste que não exercita o que o nome promete* — cobertura aparente sem
-cobertura real (Caso 6). Ele cruza bem política × dados, mas o risco cresce na
-*transcrição* (decisão → documento), nos detalhes de comportamento de
-biblioteca, e na fidelidade entre o nome de um teste e o que ele de fato
-verifica. Meus alertas passaram a ser: conferir exemplos contra as regras que
+cobertura real (Caso 6); (5) *desenho que generaliza uma regra que não deveria
+ser generalizada* — mesma estrutura de estado aplicada a categorias com
+semânticas diferentes (Caso 7). Este último é o mais valioso: foi pego na
+etapa de desenho, antes de qualquer código ou teste existir — evidência de que
+a pausa obrigatória antes de tasks críticas (regra do CLAUDE.md) funciona na
+prática. Meus alertas passaram a ser: conferir exemplos contra as regras que
 os acompanham, reler documentos materializados contra as decisões originais,
-rastrear o fluxo de dados de ponta a ponta em decisões de precisão numérica, e
-ler o corpo de cada teste contra o nome, não só conferir se ele passa.
+rastrear o fluxo de dados de ponta a ponta em decisões de precisão numérica,
+ler o corpo de cada teste contra o nome, e confrontar toda estrutura de estado
+proposta contra o texto da spec categoria por categoria, não só contra os
+dados de exemplo disponíveis.
 
 ---
 
