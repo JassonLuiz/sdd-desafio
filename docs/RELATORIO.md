@@ -50,6 +50,13 @@ recusado = zero) + novo código COTA_ESGOTADA no enum.
 Evidência: `docs/sessions/01-spec-plan-tasks.md`, trecho "Ponto fraco que você deve
 verificar antes de prosseguir" (final da AMB-016).
 
+**Mais um caso da configuração em ação (Fase 2):** T-006: o agente detectou
+que a spec era omissa sobre `motivo_texto` para 4 dos 7 códigos de motivo
+(definia apenas `CATEGORIA_INVALIDA` e `LIMITE_DIARIO`/`COTA_ESGOTADA`
+explicitamente) e parou para pedir decisão em vez de inventar texto —
+comportamento induzido pela regra 3 do CLAUDE.md ("explicação que não está na
+spec é bug de spec"). Virou a primeira entrada do `DECISIONS.md` do projeto.
+
 ---
 
 ## Descrição
@@ -97,6 +104,12 @@ dado ausente, adotei o mesmo formato — limitação explícita declarada + clá
 de escopo negativo + recomendação de evolução do schema. Aplicado uniformemente
 em AMB-003 (diárias), AMB-006 (status de viagem), AMB-008 (data de lançamento)
 e AMB-009 (estornos/créditos).
+
+**Candidato reserva para esta seção:** o episódio de `motivo_texto` (T-006)
+também serve como exemplo de "Descrição" — a spec ganhou uma tabela de
+templates por código que não existia na v1.0, motivada por uma lacuna
+descoberta durante a implementação, não antecipada na manhã. Ilustra o FAQ do
+desafio: "spec que não muda em dois dias é spec que ninguém consultou".
 
 ---
 
