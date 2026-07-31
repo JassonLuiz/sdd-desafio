@@ -10,6 +10,180 @@ Ordem cronológica inversa: a mais recente primeiro.
 
 ---
 
+## D-013 — Argumentos `--politica` e `--cambio` são obrigatórios em toda execução · `2026-07-30`
+
+**Gatilho:** AMB-025 — motor v2 precisa de dois arquivos novos na CLI. A
+questão era se `--cambio` deveria ser condicional (só quando houver moeda
+estrangeira na entrada).
+
+**Decisão:** Ambos obrigatórios em toda execução. Sem condicional.
+
+**Por quê:** Erro condicional (descoberto após leitura de `--input`) exige que o
+processo já tenha carregado o JSON de entrada para saber que `--cambio` faz
+falta — diagnóstico mais difícil. Obrigatório sempre é simples, consistente e
+reproduzível em scripts.
+
+**O que mudou na spec:** Seção 4.1 menciona três argumentos obrigatórios.
+AMB-025 registrada na seção 6.
+
+---
+
+## D-012 — `periodicidade` controla o regime de agregação, não o número de diárias · `2026-07-30`
+
+**Gatilho:** AMB-024 — campo `periodicidade` nas entradas de categoria da
+política poderia ser interpretado como controle de quantas diárias contar por
+lançamento (resolveria AMB-003) ou como regime de agregação (por dia vs por
+lançamento).
+
+**Decisão:** `periodicidade` controla apenas o regime: `"dia"` = acumula por
+data; `"diaria"` = por lançamento. A limitação de `num_diarias` (AMB-003)
+permanece ortogonal — cada lançamento ainda conta como 1 diária porque o schema
+de entrada não possui o campo. Remove `CATEGORIAS_LIMITE_POR_LANCAMENTO`
+hardcoded do código.
+
+**Por quê:** Confundir os dois conceitos quebraria hospedagem (per-item) e
+alimentação (por-dia) de forma não óbvia. Manter separação permite evoluir
+AMB-003 independentemente quando `num_diarias` entrar no schema.
+
+**O que mudou na spec:** RF-10 e RF-17 documentam a separação; AMB-024 na
+seção 6.
+
+---
+
+## D-011 — `acrescimo_em_viagem_percentual` em politica-v4.json não ativa RF-16 · `2026-07-30`
+
+**Gatilho:** AMB-023 — arquivo `politica-v4.json` contém
+`"acrescimo_em_viagem_percentual": 50`. A dúvida era se o campo autoriza
+aplicar RF-16.
+
+**Decisão:** Motor ignora o campo. RF-16 continua suspensa. Campo existe para
+referência futura.
+
+**Por quê:** O comunicado do Dia 2 não menciona ativação de RF-16. Silêncio
+sobre uma mudança de +50% em todos os limites não é autorização implícita. O
+campo no arquivo antecipa uso futuro quando o schema de entrada ganhar campo de
+status de viagem.
+
+**O que mudou na spec:** RF-16 atualizado mencionando que o campo existe mas
+é ignorado. AMB-023 na seção 6.
+
+---
+
+## D-010 — Limiar de NF é global do arquivo de política, sem override por CC · `2026-07-30`
+
+**Gatilho:** AMB-022 — `nota_fiscal_obrigatoria_acima_de = 100.00` está no
+campo raiz de `politica-v4.json`. A questão era se podia ter override por CC.
+
+**Decisão:** Global, sem override. Comparação sempre sobre `valor_considerado`
+em BRL (após conversão, se aplicável).
+
+**Por quê:** Campo no raiz do arquivo (sem estrutura de CC) indica intenção
+global. Consistente com AMB-021: BRL é a única referência após passo 1. Remove
+constante `GATILHO_NF` hardcoded do código.
+
+**O que mudou na spec:** RF-07 atualizado com referência ao campo raiz da
+política. AMB-022 na seção 6.
+
+---
+
+## D-009 — Conversão de moeda ocorre no passo 1, `valor_considerado` é sempre BRL · `2026-07-30`
+
+**Gatilho:** AMB-021 — onde entra a conversão de câmbio no pipeline?
+
+**Decisão:** Passo 1, junto com o arredondamento half-up.
+`valor_considerado` é sempre BRL. Todos os passos 2–7 operam sobre BRL
+sem exceção.
+
+**Por quê:** Ponto único de normalização (mesma filosofia de AMB-010). Passos
+de negócio não precisam conhecer câmbio. Falha de câmbio rejeita o item antes
+de qualquer regra de negócio, o que é correto: sem valor em BRL não há base de
+cálculo.
+
+**O que mudou na spec:** RF-01 reformulado com dois sub-passos explícitos.
+RF-11 atualizado com passo 1 capaz de rejeitar. AMB-021 na seção 6.
+
+---
+
+## D-008 — `valor_original` ecoa moeda original; novos campos `moeda` e `taxa_cambio_aplicada` · `2026-07-30`
+
+**Gatilho:** AMB-020 — colaborador submeteu EUR 22,00; o que entra em
+`valor_original` na saída?
+
+**Decisão:** `valor_original` ecoa o literal da entrada na moeda original
+(22,00, não 130,46). Dois novos campos obrigatórios na saída por item:
+`moeda` (ISO 4217, `"BRL"` quando ausente na entrada) e
+`taxa_cambio_aplicada` (valor literal do arquivo de câmbio; `null` quando
+`moeda = "BRL"`).
+
+**Por quê:** "Original" significa o que o colaborador registrou. Alterar para
+BRL tornaria o campo opaco e quebraria a auditoria. Os novos campos expõem a
+conversão de forma rastreável.
+
+**O que mudou na spec:** Seção 4.1 adicionou campo `moeda` na entrada.
+Seção 4.2 adicionou `itens[].moeda` e `itens[].taxa_cambio_aplicada`.
+AMB-020 na seção 6.
+
+---
+
+## D-007 — `MOEDA_NAO_SUPORTADA` para moeda ausente; `TAXA_INDISPONIVEL` para ausência de cotação · `2026-07-30`
+
+**Gatilho:** AMB-019 — GBP ausente do `cambio.json`. A dúvida era se deveria
+usar o mesmo código de TAXA_INDISPONIVEL ou um código distinto.
+
+**Decisão:** Dois códigos distintos:
+- `MOEDA_NAO_SUPORTADA`: moeda inteiramente ausente como chave da tabela.
+- `TAXA_INDISPONIVEL`: moeda presente na tabela, mas sem cotação anterior ou
+  na data da despesa (caso extremo de AMB-018).
+
+**Por quê:** Mesmo princípio que separou `LIMITE_DIARIO` de `COTA_ESGOTADA`:
+condição diferente → código distinto → diagnóstico operacional diferente.
+"GBP não está no contrato" vs "taxa de USD ainda não foi publicada nessa data"
+são problemas distintos para a equipe de RH.
+
+**O que mudou na spec:** Enum de `motivo_codigo` (seção 4.2) ganhou duas
+linhas em passo 1. Templates correspondentes adicionados. AMB-019 na seção 6.
+
+---
+
+## D-006 — Fallback de taxa câmbio: data anterior mais próxima, sem limite de dias · `2026-07-30`
+
+**Gatilho:** AMB-018 — despesa de sábado (e-004, EUR 30,00 em 2026-07-18)
+sem cotação PTAX porque fins de semana não são publicados.
+
+**Decisão:** Busca a data exata; se ausente, busca a data imediatamente
+anterior disponível para aquela moeda, sem limite de dias para trás. Se não
+houver nenhuma data anterior no arquivo, rejeita com `TAXA_INDISPONIVEL`.
+
+**Por quê:** Câmbio não muda no fim de semana, apenas não é republicado. Usar
+a sexta como referência para sábado e domingo é o comportamento padrão de
+sistemas PTAX. Lookback sem limite reflete que uma moeda pode não ter cotação
+por períodos longos (feriados nacionais estrangeiros, etc.).
+
+**O que mudou na spec:** RF-18 documenta o algoritmo de busca. AMB-018 na
+seção 6.
+
+---
+
+## D-005 — Política de CC: merge com padrao; `limite: 0.00` é declaração explícita, não exclusão · `2026-07-30`
+
+**Gatilho:** AMB-017 — `politica-v4.json` introduz `centros_custo`. CC-ENG-PLATAFORMA
+declara `hospedagem.limite = 0.00` com observação "nao reembolsavel". A questão
+era se ausência de categoria no CC significa exclusão ou herança do padrão.
+
+**Decisão:** Merge: categoria ausente no CC herda do `padrao`; `limite: 0.00`
+é declaração explícita (categoria reconhecida; passo 7 a processa, com cota
+zero desde o início → sempre `COTA_ESGOTADA`). CC sem entrada em
+`centros_custo` usa `padrao` integralmente.
+
+**Por quê:** CC-ENG-PLATAFORMA declara a categoria com valor e observação
+textual — se "ausência = exclusão" fosse a convenção, eles não precisariam
+fazer isso. Consistente com a distinção entre `LIMITE_DIARIO` e `COTA_ESGOTADA`:
+cota zero não elimina a categoria, apenas garante que toda despesa a zera.
+
+**O que mudou na spec:** RF-05 e RF-17 documentam o merge. AMB-017 na seção 6.
+
+---
+
 ## D-004 — Template de LIMITE_DIARIO para hospedagem é exceção ao padrão · `2026-07-30`
 
 **Gatilho:** Revisão pré-T-017. Ao montar os critérios de aceite do item d-010,

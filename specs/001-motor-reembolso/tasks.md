@@ -292,10 +292,141 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ---
 
-## Fase 9 — Envelope (criar no Dia 2)
+## Fase 9 — Envelope (Dia 2)
 
-> Novas tasks a partir da mudança de requisito recebida às 10h do Dia 2.
-> Numeração continua de T-020 em diante — não reiniciar nem renumerar anteriores.
+> Novas tasks a partir da mudança de requisito do Dia 2 (politica-v4.json + cambio.json).
+> Numeração continua de T-020 — não reiniciar nem renumerar anteriores.
+
+- [x] **T-020** — Documentação v2 (spec.md, DECISIONS.md D-005..D-013, tasks T-020+)
+  - **O que faz:** atualiza spec.md para versão 2.0 (RF-17, RF-18, AMB-017..025, borda,
+    pipeline, critérios de aceite envelope); registra D-005..D-013 em DECISIONS.md;
+    adiciona T-020..T-030 em tasks.md.
+  - **Atende:** pré-condição de implementação (spec antes de código)
+  - **Aceite:** spec.md versão 2.0 com todos os RFs, AMBs e critérios envelope;
+    DECISIONS.md com 13 entradas; tasks.md com T-020..T-030
+  - **Commit:** `docs(spec): spec v2.0 — RF-17/18, AMB-017..025, D-005..D-013, T-020..T-030`
+
+- [ ] **T-021** — Modelos v2: novos campos de moeda (`src/modelos.py`)
+  - **O que faz:** adiciona `moeda: str` (default `"BRL"`) e nenhum campo de taxa em
+    `DespesaBruta`; adiciona `moeda: str` e `taxa_cambio_aplicada: Decimal | None` em
+    `Despesa` e `ResultadoItem`. Atualiza `conftest.py` se fixtures precisarem de
+    `moeda`.
+  - **Atende:** RF-18, AMB-020; base para T-023 e T-028
+  - **Aceite:** importação e instanciação dos dataclasses sem erro; suite existente
+    ainda passa (campos com default `"BRL"` / `None` não quebram testes anteriores)
+  - **Commit:** `feat(T-021): modelos v2 — campos moeda e taxa_cambio_aplicada`
+
+- [ ] **T-022** — Parser de política (`src/parser_politica.py`)
+  - **O que faz:** função `carregar_politica(caminho) → dict` que lê
+    `politica-v4.json` como JSON puro (valores Decimal para limites); função
+    `politica_efetiva(politica: dict, centro_custo: str) → dict` que aplica o
+    merge padrao + CC (RF-17, D-005): retorna `{categoria: {"limite": Decimal,
+    "periodicidade": str}, ...}`. CC sem entrada em `centros_custo` → usa `padrao`
+    integralmente. Valida `periodicidade` — valor desconhecido → `ValueError` explícito.
+    Expõe `nota_fiscal_obrigatoria_acima_de` como `Decimal` do campo raiz.
+  - **Atende:** RF-17, AMB-017, AMB-022, AMB-024, D-005, D-010, D-012
+  - **Aceite:**
+    `test_rf17_cc_comercial_alimentacao_limite_90` — `politica_efetiva(p, "CC-COMERCIAL")["alimentacao"]["limite"] == Decimal("90.00")`;
+    `test_rf17_cc_desconhecido_usa_padrao` — `politica_efetiva(p, "CC-SUPORTE-N2") == politica_efetiva(p, "__inexistente__")`;
+    `test_rf17_cc_eng_hospedagem_zero` — `politica_efetiva(p, "CC-ENG-PLATAFORMA")["hospedagem"]["limite"] == Decimal("0.00")`;
+    `test_rf17_cc_comercial_representacao_reconhecida` — `"representacao" in politica_efetiva(p, "CC-COMERCIAL")`;
+    `test_rf17_representacao_ausente_do_padrao` — `"representacao" not in politica_efetiva(p, "CC-SUPORTE-N2")`;
+    `test_rf17_periodicidade_invalida_erro` — periodicidade `"semana"` → `ValueError`
+  - **Commit:** `feat(T-022): parser de política com merge padrao+CC`
+
+- [ ] **T-023** — Parser de câmbio e busca de taxa (`src/parser_cambio.py`)
+  - **O que faz:** função `carregar_cambio(caminho) → dict` que lê `cambio.json`
+    com valores Decimal; função `buscar_taxa(tabela: dict, moeda: str, data: date)
+    → Decimal` que: (1) moeda ausente da tabela → `MoedaNaoSuportadaError`; (2)
+    data exata presente → retorna taxa; (3) data ausente → busca data anterior mais
+    próxima (fallback sem limite, AMB-018); (4) sem data anterior → `TaxaIndisponivelError`.
+  - **Atende:** RF-18, AMB-018, AMB-019, D-006, D-007
+  - **Aceite:**
+    `test_rf18_taxa_data_exata` — EUR em 2026-07-14 → `Decimal("5.93")`;
+    `test_rf18_fallback_sabado` — EUR em 2026-07-18 (sábado) → `Decimal("5.96")` (2026-07-17);
+    `test_rf18_fallback_multiplos_dias` — USD em data fictícia 2026-07-19 (domingo) → `Decimal("5.47")` (2026-07-17);
+    `test_rf18_moeda_ausente` — GBP → `MoedaNaoSuportadaError`;
+    `test_rf18_sem_data_anterior` — USD em 2026-07-01 (anterior a qualquer data na tabela) → `TaxaIndisponivelError`
+  - **Commit:** `feat(T-023): parser de câmbio com fallback de data`
+
+- [ ] **T-024** — Conversão de moeda no passo 1 (`src/motor.py`, `src/normalizacao.py`)
+  - **O que faz:** no motor, antes de chamar `normalizar_valor`, verifica se
+    `despesa_bruta.moeda != "BRL"`. Se diferente: chama `buscar_taxa`; em
+    `MoedaNaoSuportadaError` → retorna `ResultadoItem` com `MOEDA_NAO_SUPORTADA`;
+    em `TaxaIndisponivelError` → `TAXA_INDISPONIVEL`; em sucesso → multiplica
+    `valor_original × taxa` e passa ao `normalizar_valor`. Preenche
+    `taxa_cambio_aplicada` (taxa encontrada) ou `None` (BRL). Mantém
+    `valor_original` literal da entrada.
+  - **Atende:** RF-01 (sub-passo 1), RF-18, AMB-021, D-008, D-009
+  - **Aceite:**
+    `test_rf18_eur_convertido_para_brl` — EUR 22,00 × 5,93 → `valor_considerado == Decimal("130.46")`;
+    `test_rf18_moeda_ausente_recusa_no_passo1` — GBP → `motivo_codigo == "MOEDA_NAO_SUPORTADA"`, passo 2 não avaliado;
+    `test_rf18_taxa_indisponivel_recusa_no_passo1` — moeda presente, sem data anterior → `TAXA_INDISPONIVEL`;
+    `test_rf18_brl_nao_converte` — moeda ausente → `taxa_cambio_aplicada == None`, `valor_considerado` via normalizar_valor direto;
+    `test_rf18_valor_original_preservado` — EUR 22,00 convertido → `valor_original == Decimal("22.00")`, `moeda == "EUR"`
+  - **Commit:** `feat(T-024): conversão de moeda no passo 1 do pipeline`
+
+- [ ] **T-025** — Refatorar `verificar_categoria` para política efetiva (`src/regras.py`)
+  - **O que faz:** remove constante `CATEGORIAS_VALIDAS` hardcoded; `verificar_categoria`
+    recebe `politica_eff: dict` como parâmetro adicional e verifica `categoria in politica_eff`.
+    Atualiza chamada no motor e testes existentes que passam `CATEGORIAS_VALIDAS`.
+  - **Atende:** RF-05, AMB-013, AMB-017, D-005
+  - **Aceite:**
+    `test_rf05_representacao_cc_comercial_aceita` — política CC-COMERCIAL → `"representacao"` passa;
+    `test_rf05_representacao_cc_suporte_recusada` — padrao → `CATEGORIA_INVALIDA`;
+    `test_rf05_coworking_qualquer_cc_recusado` — ausente em todos → `CATEGORIA_INVALIDA`;
+    suite existente de RF-05 ainda passa com política CC-ENG-PLATAFORMA ou padrao
+  - **Commit:** `feat(T-025): verificar_categoria com política efetiva`
+
+- [ ] **T-026** — Refatorar `verificar_nf` para limiar da política (`src/regras.py`)
+  - **O que faz:** remove constante `GATILHO_NF` hardcoded; `verificar_nf` recebe
+    `gatilho_nf: Decimal` como parâmetro (lido de `nota_fiscal_obrigatoria_acima_de`
+    da política). Atualiza chamada no motor.
+  - **Atende:** RF-07, AMB-022, D-010
+  - **Aceite:**
+    `test_rf07_gatilho_lido_da_politica` — gatilho 100,00 → R$100,00 sem NF passa,
+    R$100,01 sem NF → `SEM_NF` (mesmo comportamento anterior, agora parametrizado);
+    `test_rf07_gatilho_alternativo` — com gatilho 50,00 → R$50,01 sem NF → `SEM_NF`
+  - **Commit:** `feat(T-026): verificar_nf com limiar da política`
+
+- [ ] **T-027** — Refatorar `GerenciadorCotas` para limites e periodicidade da política (`src/cotas.py`)
+  - **O que faz:** remove `LIMITE_DIARIO` hardcoded (ou mantém como fallback interno);
+    `GerenciadorCotas` recebe `politica_eff: dict` no construtor; extrai `limite` e
+    `periodicidade` por categoria. `periodicidade = "dia"` → chave `(data, categoria)`;
+    `periodicidade = "diaria"` → chave `(id, categoria)` (per-lançamento). Motor passa
+    política efetiva ao instanciar `GerenciadorCotas`.
+  - **Atende:** RF-08, RF-09, RF-10, RF-17, AMB-017, AMB-024, D-005, D-012
+  - **Aceite:**
+    `test_rf10_periodicidade_diaria_por_lancamento` — dois lançamentos de hospedagem
+    no mesmo dia, limite 250,00 → cada um reembolsa até 250,00 independentemente;
+    `test_rf08_cc_comercial_limite_90` — alimentacao CC-COMERCIAL → corte em R$90,00;
+    `test_rf10_cc_eng_hospedagem_zero_cota_esgotada` — limite 0,00 → sempre `COTA_ESGOTADA`;
+    `test_rf09_cc_comercial_transporte_150` — transporte CC-COMERCIAL → corte em R$150,00
+  - **Commit:** `feat(T-027): GerenciadorCotas com política efetiva e periodicidade`
+
+- [ ] **T-028** — Atualizar serializador e CLI (`src/serializador.py`, `src/cli.py`)
+  - **O que faz:** serializador: inclui `moeda` e `taxa_cambio_aplicada` (em posição
+    após `valor_original`) na serialização de cada item; `taxa_cambio_aplicada` como
+    número com 2dp quando não-nulo, `null` quando nulo. CLI: adiciona `--politica`
+    e `--cambio` como argumentos obrigatórios; carrega os três arquivos e passa
+    política efetiva + tabela de câmbio ao motor. Erros de arquivo inexistente →
+    mensagem clara + código de saída 1.
+  - **Atende:** RF-14 (campos novos), AMB-025, D-013
+  - **Aceite:**
+    `test_rf14_campos_moeda_na_saida` — JSON de saída contém `"moeda"` e
+    `"taxa_cambio_aplicada"` em todo item; `null` para BRL;
+    CLI com `--input`, `--politica` e `--cambio` presentes termina código 0;
+    CLI sem `--politica` → erro e código 1
+  - **Commit:** `feat(T-028): serializador e CLI com campos v2 e novos argumentos`
+
+- [ ] **T-029** — Testes de integração: envelope (`tests/test_integracao_envelope.py`)
+  - **O que faz:** carrega `exemplos/envelope/despesas-envelope.json` e
+    `exemplos/envelope/despesas-envelope-cc-desconhecido.json` com a política v4 e
+    a tabela de câmbio do envelope; verifica os critérios de aceite da seção 9 para
+    e-001..e-010 e f-001..f-004.
+  - **Atende:** seção 9 da spec (critérios de aceite do envelope)
+  - **Aceite:** todos os 14 asserts passam (e-001..e-010 e f-001..f-004)
+  - **Commit:** `test(T-029): integração envelope — e-001..e-010, f-001..f-004`
 
 ---
 
@@ -337,3 +468,14 @@ Preencher ao fechar cada fase.
 | AMB-014 | T-013 | `test_rf15_sabado_processado_normalmente` |
 | AMB-015 | T-012 | `test_rf11_competencia_precede_nf`, `test_rf11_duplicata_de_item_sem_nf` |
 | AMB-016 | T-014, T-015 | `test_rf14_saidas_identicas_mesma_entrada` |
+| RF-17 | T-022, T-025, T-027 | `test_rf17_cc_comercial_alimentacao_limite_90`, `test_rf17_cc_desconhecido_usa_padrao`, `test_rf17_periodicidade_invalida_erro` |
+| RF-18 | T-023, T-024 | `test_rf18_taxa_data_exata`, `test_rf18_fallback_sabado`, `test_rf18_moeda_ausente`, `test_rf18_eur_convertido_para_brl` |
+| AMB-017 | T-022, T-025 | `test_rf17_cc_eng_hospedagem_zero`, `test_rf17_representacao_ausente_do_padrao` |
+| AMB-018 | T-023 | `test_rf18_fallback_sabado`, `test_rf18_fallback_multiplos_dias` |
+| AMB-019 | T-023 | `test_rf18_moeda_ausente` |
+| AMB-020 | T-021, T-024 | `test_rf18_valor_original_preservado` |
+| AMB-021 | T-024 | `test_rf18_brl_nao_converte`, `test_rf18_eur_convertido_para_brl` |
+| AMB-022 | T-026 | `test_rf07_gatilho_lido_da_politica` |
+| AMB-023 | T-013 | `test_rf16_nenhum_item_com_limite_ampliado` |
+| AMB-024 | T-022, T-027 | `test_rf10_periodicidade_diaria_por_lancamento` |
+| AMB-025 | T-028 | `test_rf14_campos_moeda_na_saida` |

@@ -1,6 +1,6 @@
 # Spec — Motor de Cálculo de Reembolso
 
-**Versão:** 1.0 · **Status:** ativo · **Última alteração:** 2026-07-29
+**Versão:** 2.0 · **Status:** ativo · **Última alteração:** 2026-07-30
 
 > **Regra de ouro deste arquivo:** ele descreve o QUÊ e o PORQUÊ. Nenhuma linha
 > aqui pode citar linguagem, biblioteca, classe, função ou estrutura de pasta.
@@ -47,6 +47,11 @@ da decisão em formato auditável e reproduzível.
   campos da chave de duplicata, não de id isolado).
 - Este sistema não detecta duplicatas por similaridade — apenas por
   coincidência exata de campos (ver AMB-007).
+- Este sistema não consulta serviços de câmbio em tempo real; taxas são
+  fornecidas via arquivo externo `cambio.json` (ver RF-18, AMB-018).
+- Este sistema não interpola taxas para moedas ausentes do arquivo de câmbio
+  fornecido; a ausência de moeda inteira na tabela resulta em recusa por item
+  (ver AMB-019, RF-18).
 
 ---
 
@@ -54,8 +59,13 @@ da decisão em formato auditável e reproduzível.
 
 ### 4.1 Entrada
 
-Formato definido por `exemplos/despesas-exemplo.json`. O schema de entrada é
-fixo; nenhum campo adicional será introduzido por este sistema.
+O sistema recebe três arquivos de entrada via CLI (ver RF-17, RF-18, AMB-025):
+
+- **`--input`**: lote de despesas do colaborador (schema abaixo).
+- **`--politica`**: tabela de limites por centro de custo (formato: `exemplos/envelope/politica-v4.json`).
+- **`--cambio`**: taxas de câmbio por data e moeda (formato: `exemplos/envelope/cambio.json`).
+
+Schema do arquivo `--input`:
 
 | Campo | Tipo | Significado | Obrigatório |
 |---|---|---|---|
@@ -70,7 +80,8 @@ fixo; nenhum campo adicional será introduzido por este sistema.
 | `despesas[].categoria` | string | Categoria da despesa (domínio fechado após normalização) | Sim |
 | `despesas[].descricao` | string | Descrição livre — não utilizada em regras de negócio | Sim |
 | `despesas[].fornecedor` | string | Fornecedor | Sim |
-| `despesas[].valor` | número | Valor em reais (pode ter mais de 2 casas decimais) | Sim |
+| `despesas[].valor` | número | Valor na moeda indicada por `moeda` (pode ter mais de 2 casas decimais) | Sim |
+| `despesas[].moeda` | string ISO 4217 | Moeda do valor — quando ausente, assume-se `"BRL"` | Não |
 | `despesas[].tem_nota_fiscal` | booleano | Se nota fiscal foi apresentada | Sim |
 
 **Nota sobre `periodo.competencia` vs `inicio`/`fim`:** quando divergirem,
@@ -99,8 +110,10 @@ byte a byte idêntica.
 | `resumo.itens_recusados` | inteiro | Contagem de itens com `status = "recusado"` |
 | `itens[].id` | string | Identificador da despesa, espelho da entrada |
 | `itens[].status` | enum | `"aprovado"` / `"parcial"` / `"recusado"` (definição aritmética em RF-13) |
-| `itens[].valor_original` | número | Valor exatamente como veio na entrada, sem normalização |
-| `itens[].valor_considerado` | número | Valor após normalização half-up a 2 casas (RF-01) |
+| `itens[].valor_original` | número | Valor literal da entrada na moeda original — sem conversão nem normalização |
+| `itens[].moeda` | string | Moeda original da despesa (ISO 4217); `"BRL"` quando ausente na entrada |
+| `itens[].taxa_cambio_aplicada` | número \| null | Taxa BRL/moeda usada na conversão (literal do arquivo); `null` quando `moeda = "BRL"` |
+| `itens[].valor_considerado` | número | Valor em BRL após conversão de moeda (quando aplicável) e normalização half-up a 2 casas (RF-01, RF-18) |
 | `itens[].valor_reembolsavel` | número | Valor a reembolsar após todas as regras |
 | `itens[].motivo_codigo` | string \| null | Código do motivo (`null` quando `status = "aprovado"`) |
 | `itens[].motivo_texto` | string \| null | Descrição legível do motivo em português (`null` quando `status = "aprovado"`) |
@@ -110,13 +123,15 @@ byte a byte idêntica.
 
 | Código | Passo | Quando |
 |---|---|---|
+| `MOEDA_NAO_SUPORTADA` | 1 | `moeda ≠ BRL` e moeda ausente da tabela de câmbio fornecida (ver AMB-019) |
+| `TAXA_INDISPONIVEL` | 1 | `moeda ≠ BRL`, moeda presente na tabela mas sem cotação anterior ou na data (ver AMB-018) |
 | `VALOR_NAO_POSITIVO` | 2 | `valor_considerado ≤ 0,00` |
 | `FORA_COMPETENCIA` | 3 | `data` fora de `[periodo.inicio, periodo.fim]` |
-| `CATEGORIA_INVALIDA` | 4 | categoria não reconhecida após normalização |
+| `CATEGORIA_INVALIDA` | 4 | categoria não reconhecida na política efetiva do colaborador após normalização |
 | `DUPLICATA` | 5 | coincidência exata com item anterior na ordem do arquivo |
-| `SEM_NF` | 6 | `valor_considerado > 100,00` e `tem_nota_fiscal = false` |
+| `SEM_NF` | 6 | `valor_considerado > nota_fiscal_obrigatoria_acima_de` (da política) e `tem_nota_fiscal = false` |
 | `LIMITE_DIARIO` | 7 | item cortado parcialmente (saldo disponível > 0,00 mas < `valor_considerado`) |
-| `COTA_ESGOTADA` | 7 | item zerado porque saldo da categoria no dia já era 0,00 |
+| `COTA_ESGOTADA` | 7 | item zerado porque saldo da categoria no período já era 0,00 |
 
 #### Templates de `motivo_texto` por código
 
@@ -126,6 +141,8 @@ substring onde esta tabela exige conteúdo específico.
 
 | Código | Template | Placeholders |
 |---|---|---|
+| `MOEDA_NAO_SUPORTADA` | `"moeda não suportada: <moeda>"` | `<moeda>` = código ISO 4217 recebido |
+| `TAXA_INDISPONIVEL` | `"taxa de câmbio indisponível para <moeda>: nenhuma cotação anterior a <data> na tabela"` | `<moeda>` = código ISO 4217; `<data>` = data da despesa `AAAA-MM-DD` |
 | `VALOR_NAO_POSITIVO` | `"valor não positivo: R$ <valor>"` | `<valor>` = `valor_considerado` com 2 casas decimais, vírgula decimal |
 | `FORA_COMPETENCIA` | `"data <data> fora do período <inicio> a <fim>"` | datas no formato `AAAA-MM-DD` |
 | `CATEGORIA_INVALIDA` | `"categoria fora da política: <categoria>"` | `<categoria>` = valor normalizado |
@@ -199,18 +216,20 @@ substring onde esta tabela exige conteúdo específico.
 
 ### RF-01 — Normalização de valor monetário
 
-**Regra:** O valor de cada despesa é arredondado para 2 casas decimais com
-regra half-up antes de qualquer outra regra ser aplicada. Todas as
-comparações e cálculos subsequentes operam sobre o valor normalizado. Este é
-o único ponto de arredondamento no fluxo de processamento.
+**Regra:** O valor de cada despesa é preparado para comparação em dois
+sub-passos, ambos dentro do passo 1:
 
-**Origem:** AMB-010; política do RH (implícito — não define arredondamento).
+1. **Conversão de moeda** (quando `moeda ≠ BRL`): `valor_considerado = valor_original × taxa_cambio_aplicada`, antes do arredondamento. A taxa é buscada conforme RF-18. Falha de câmbio rejeita o item imediatamente.
+2. **Arredondamento half-up**: o valor (convertido ou original) é arredondado para 2 casas decimais. Este é o único ponto de arredondamento no fluxo.
+
+`valor_original` ecoa sempre o literal da entrada, na moeda original, sem conversão nem arredondamento. `valor_considerado` contém o resultado após ambos os sub-passos, **sempre em BRL**. Todas as comparações e cálculos nos passos 2–7 operam exclusivamente sobre `valor_considerado` em BRL, sem exceção.
+
+**Origem:** AMB-010, AMB-020, AMB-021.
 
 **Aceite:**
-- Despesa com `valor = 33.333` → `valor_original = 33.333`, `valor_considerado = 33.33`
-- Despesa com `valor = 33.335` → `valor_original = 33.335`, `valor_considerado = 33.34`
-- Despesa com `valor = 72.50` → `valor_original = 72.50`, `valor_considerado = 72.50` (inalterado)
-- d-011 (`valor = 33.333`) → `valor_original: 33.333`, `valor_considerado: 33.33` — divergência visível na saída
+- `valor = 33.333`, moeda ausente → `valor_original = 33.333`, `moeda = "BRL"`, `taxa_cambio_aplicada = null`, `valor_considerado = 33.33`
+- `valor = 33.335` → `valor_considerado = 33.34`
+- `valor = 22.00`, `moeda = "EUR"`, taxa 5,93 → `valor_original = 22.00`, `moeda = "EUR"`, `taxa_cambio_aplicada = 5.93`, `valor_considerado = 130.46`
 
 ---
 
@@ -269,19 +288,25 @@ proxy. Recomendação de evolução: incluir campo `data_lancamento`.
 
 ### RF-05 — Categorias válidas
 
-**Regra:** Após normalização (RF-02), categorias fora da lista canônica são
-recusadas com `motivo_codigo = "CATEGORIA_INVALIDA"` e
+**Regra:** Após normalização (RF-02), a categoria é verificada contra a
+**política efetiva do colaborador** (RF-17). Categorias sem entrada na política
+efetiva são recusadas com `motivo_codigo = "CATEGORIA_INVALIDA"` e
 `motivo_texto = "categoria fora da política: <valor normalizado>"`.
 Não consomem cota diária.
 
-**Lista canônica:** `alimentacao`, `transporte_urbano`, `hospedagem`.
+A política efetiva é o merge do objeto `padrao` com o registro do centro de
+custo: categorias presentes no CC sobrescrevem o padrão; categorias ausentes
+no CC herdam do `padrao`; categorias ausentes em ambos não são reconhecidas.
+Uma categoria com `limite: 0.00` está presente na política — é reconhecida e
+processada pelo passo 7, onde a cota estará esgotada desde o primeiro item.
 
-**Origem:** AMB-011, AMB-013; política do RH, item 9.
+**Origem:** AMB-011, AMB-013, AMB-017.
 
 **Aceite:**
-- `"coworking"` → recusada (`"categoria fora da política: coworking"`)
-- `"ALIMENTACAO"` → normalizada para `"alimentacao"` → reconhecida
-- `"taxi"` → não reconhecida → recusada
+- `"coworking"` → ausente do `padrao` e de qualquer CC → recusada
+- `"ALIMENTACAO"` → normalizada para `"alimentacao"` → reconhecida (no `padrao`)
+- `"representacao"` + `CC-COMERCIAL` → reconhecida (no registro do CC)
+- `"representacao"` + CC sem entrada de `representacao` → recusada
 
 ---
 
@@ -315,89 +340,77 @@ como duplicata.
 
 ### RF-07 — Obrigatoriedade de nota fiscal
 
-**Regra:** Despesas com `valor_considerado > 100,00` e
-`tem_nota_fiscal = false` são recusadas com `motivo_codigo = "SEM_NF"`.
-Não consomem cota diária.
+**Regra:** Despesas com `valor_considerado > nota_fiscal_obrigatoria_acima_de`
+(lido do campo raiz do arquivo de política, em BRL) e `tem_nota_fiscal = false`
+são recusadas com `motivo_codigo = "SEM_NF"`. Não consomem cota diária.
+A comparação é sempre sobre `valor_considerado` em BRL (após conversão, quando aplicável).
 
-**Origem:** AMB-004, AMB-005; política do RH, item 5.
+**Origem:** AMB-004, AMB-005, AMB-021, AMB-022; política do RH, item 5.
 
 **Aceite:**
-- `valor = 100.00`, sem NF → não afetado (limite exclusivo: 100,00 não é
-  "acima de 100")
-- `valor = 100.01`, sem NF → recusada por `SEM_NF`
-- `valor = 150.00`, com NF → não afetado por esta regra
-- d-003 (`valor = 100.00`, sem NF) → passa; d-004 (`valor = 100.01`, sem NF)
-  → recusada — par de fronteira
+- `valor_considerado = 100.00` BRL, sem NF → não afetado (limiar exclusivo)
+- `valor_considerado = 100.01` BRL, sem NF → recusada por `SEM_NF`
+- USD 40,00 convertido para BRL 220,00, sem NF → 220 > 100 → `SEM_NF`
+- EUR 14,50 convertido para BRL 85,26, sem NF → 85,26 ≤ 100 → não afetado
 
 ---
 
 ### RF-08 — Limite diário de alimentação
 
 **Regra:** O total reembolsável da categoria `alimentacao` por dia é limitado
-a R$ 60,00. O limite é aplicado sobre o agregado diário. As despesas são
-processadas na ordem do arquivo de entrada; desempate por `id` em ordem
-lexicográfica crescente.
+ao valor lido da **política efetiva do colaborador** (RF-17, campo `limite`).
+O regime de agregação é `"dia"` (campo `periodicidade`): o limite aplica-se
+sobre o total diário. Processamento na ordem do arquivo; desempate por `id`
+lexicográfico crescente.
 
-O saldo disponível para um item é:
-`60,00 − Σ(valor_reembolsavel dos itens aprovados ou parciais de alimentacao
-no mesmo dia já processados)`.
+O saldo disponível e as regras de corte são as mesmas da v3 (LIMITE_DIARIO /
+COTA_ESGOTADA), com o limite agora variável por CC.
 
-- Se `saldo > 0` e `valor_considerado > saldo`: reembolsa o saldo disponível,
-  `motivo_codigo = "LIMITE_DIARIO"`.
-- Se `saldo = 0`: reembolsa R$0,00, `motivo_codigo = "COTA_ESGOTADA"`.
-- Se `saldo ≥ valor_considerado`: reembolsa integralmente (sem motivo de corte).
-
-**Origem:** AMB-001, AMB-012, AMB-015; política do RH, item 1.
+**Origem:** AMB-001, AMB-012, AMB-015, AMB-017, AMB-024; política do RH, item 1.
 
 **Aceite:**
-- d-001 (R$72,50, primeiro de alimentação do dia 03/07) → reembolsa R$60,00
-  (`LIMITE_DIARIO`)
-- d-002 (R$38,00, segundo do dia 03/07) → saldo = 0, reembolsa R$0,00
-  (`COTA_ESGOTADA`)
-- d-014 (`"ALIMENTACAO"`, R$61,00, único de alimentação do dia 31/07) →
-  reembolsa R$60,00 (`LIMITE_DIARIO`)
+- CC com limite 60,00: R$72,50 primeiro do dia → reembolsa R$60,00 (`LIMITE_DIARIO`)
+- CC com limite 90,00 (ex.: CC-COMERCIAL): R$95,00 primeiro do dia → reembolsa R$90,00
 
 ---
 
 ### RF-09 — Limite diário de transporte urbano
 
-**Regra:** Mesma lógica de RF-08, aplicada à categoria `transporte_urbano`,
-com limite de R$ 80,00 por dia.
+**Regra:** Mesma lógica de RF-08, aplicada à categoria `transporte_urbano`.
+O limite é lido da política efetiva do colaborador (RF-17). Regime `"dia"`.
 
-**Origem:** AMB-002, AMB-012, AMB-015; política do RH, item 2.
+**Origem:** AMB-002, AMB-012, AMB-015, AMB-017, AMB-024; política do RH, item 2.
 
 **Aceite:**
-- d-003 (R$100,00, primeiro de transporte no dia 06/07, NF não exigida) →
-  reembolsa R$80,00 (`LIMITE_DIARIO`)
-- d-004 (R$100,01, sem NF) → recusado por `SEM_NF` no passo 6; não chega ao
-  cálculo de limite; cota do dia não é afetada
+- CC com limite 80,00: R$100,00 primeiro do dia → reembolsa R$80,00
+- USD 40,00 → BRL 220,00, sem NF → SEM_NF antes de chegar ao limite; cota não afetada
 
 ---
 
 ### RF-10 — Limite por lançamento de hospedagem
 
-**Regra:** Cada lançamento da categoria `hospedagem` é reembolsado em até
-R$ 250,00. Cada entrada no arquivo conta como 1 diária,
-independentemente do conteúdo do campo `descricao`. Não há acumulação diária:
-o limite de R$250,00 se aplica por item, não por dia.
+**Regra:** O limite da categoria `hospedagem` é lido da política efetiva do
+colaborador (RF-17). O campo `periodicidade` na política determina o regime:
+`"diaria"` = por lançamento (cada entrada no arquivo = 1 diária, sem acumulação
+entre lançamentos do mesmo dia). Com `periodicidade = "diaria"`, cada lançamento
+tem saldo próprio e independente: dois itens de hospedagem no mesmo dia têm,
+cada um, direito ao limite completo — não compartilham cota entre si.
 
-**Limitação declarada:** a política diz "por diária", mas o schema não fornece
-campo de quantidade de diárias. O sistema degrada "por diária" para "por
-lançamento" de forma consciente. O campo `descricao` não é utilizado para
-extrair número de diárias (ver AMB-003). Recomendação de evolução: incluir
-campo estruturado `num_diarias` na entrada.
+**`periodicidade` controla o regime de agregação** (por dia vs por lançamento).
+Não resolve a limitação de AMB-003, que permanece: cada lançamento conta como
+exatamente 1 diária porque o schema não fornece `num_diarias`. O campo
+`descricao` não é utilizado para extrair número de diárias.
 
-**Justificativa na saída:** itens afetados devem ter `motivo_texto` citando
-"limite de 1 diária aplicado (campo num_diarias ausente do schema)".
+**Justificativa na saída:** itens afetados pelo limite de hospedagem devem ter
+`motivo_texto` citando `"limite de 1 diária aplicado (campo num_diarias ausente do schema)"`.
 
-**Origem:** AMB-003; política do RH, item 3.
+**Origem:** AMB-003, AMB-017, AMB-024; política do RH, item 3.
 
 **Aceite:**
-- d-010 ("Hotel Rio - 2 diárias", R$480,00, com NF) → reembolsa R$250,00
-  (`LIMITE_DIARIO`)
-- d-013 (R$690,00, sem NF) → recusado por `SEM_NF` antes de chegar ao limite
-  de hospedagem
-- Lançamento de R$200,00 com NF → reembolsa R$200,00 integralmente
+- CC com `hospedagem.limite = 250.00`, `periodicidade = "diaria"`: R$480,00 → reembolsa R$250,00 (`LIMITE_DIARIO`)
+- CC com `hospedagem.limite = 400.00` (ex.: CC-COMERCIAL): R$1200,00 → reembolsa R$400,00
+- CC com `hospedagem.limite = 0.00` (ex.: CC-ENG-PLATAFORMA): qualquer valor → R$0,00 (`COTA_ESGOTADA`)
+- Lançamento de R$200,00 com NF, limite 250,00 → reembolsa R$200,00 integralmente
 
 ---
 
@@ -410,25 +423,29 @@ item já recusado.
 
 | Passo | Verificação | Resultado em caso de falha |
 |---|---|---|
-| 1 | Normalização (RF-01, RF-02) | — (não gera recusa) |
+| 1 | Normalização e conversão de moeda (RF-01, RF-02, RF-18) | `MOEDA_NAO_SUPORTADA`, `TAXA_INDISPONIVEL` (apenas quando `moeda ≠ BRL`) |
 | 2 | Domínio de valor (RF-03) | `VALOR_NAO_POSITIVO` |
 | 3 | Competência (RF-04) | `FORA_COMPETENCIA` |
 | 4 | Categoria (RF-05) | `CATEGORIA_INVALIDA` |
 | 5 | Duplicata (RF-06) | `DUPLICATA` |
 | 6 | Nota fiscal (RF-07) | `SEM_NF` |
-| 7 | Limite diário (RF-08, RF-09, RF-10) | `LIMITE_DIARIO` ou `COTA_ESGOTADA` |
+| 7 | Limite diário (RF-08, RF-09, RF-10, RF-17) | `LIMITE_DIARIO` ou `COTA_ESGOTADA` |
 
-Itens recusados nos passos 2–6 não consomem cota diária da categoria.
+Itens recusados nos passos 1–6 não consomem cota diária da categoria.
 O passo 7 é o único que pode gerar reembolso parcial.
 
-**Origem:** AMB-015.
+**Distinção filosófica — passo 1 vs passos 2–6:** rejeições de câmbio no
+passo 1 são busca determinística de fallback sobre dado estruturado fornecido
+(`cambio.json`) — não é inferência de dado ausente do schema de entrada. A
+suspensão de RF-16 pertence à segunda categoria: o dado de viagem não existe
+no schema. Ver AMB-018, AMB-019, AMB-023.
+
+**Origem:** AMB-015, AMB-021.
 
 **Aceite:**
-- Item com `data` fora de competência E sem NF → motivo `FORA_COMPETENCIA`
-  (passo 3 precede passo 6)
-- Dois itens idênticos com `valor > 100` e sem NF → primeiro: `SEM_NF`;
-  segundo: `DUPLICATA` (passo 5 precede passo 6, e a comparação considera
-  o original independentemente de seu status)
+- Item fora de competência E sem NF → `FORA_COMPETENCIA` (passo 3 precede passo 6)
+- Dois itens idênticos, valor > 100, sem NF → primeiro `SEM_NF`; segundo `DUPLICATA`
+- Item com moeda estrangeira não suportada → `MOEDA_NAO_SUPORTADA` no passo 1
 
 ---
 
@@ -498,18 +515,98 @@ regra não escrita pelo RH.
 
 **Regra:** A regra 6 da política de RH ("colaborador em viagem tem limites
 ampliados em 50%") está suspensa nesta versão. Nenhum item recebe limites
-ampliados. Os limites aplicados são sempre os valores base:
-alimentação R$60,00, transporte R$80,00, hospedagem R$250,00.
+ampliados. Os limites aplicados são sempre os valores base lidos da política
+efetiva do colaborador (RF-17), sem acréscimo de viagem.
+
+O arquivo `politica-v4.json` contém `"acrescimo_em_viagem_percentual": 50`,
+que registra o percentual de referência para ativação futura quando o schema
+de entrada ganhar campo de status de viagem. **O motor não lê nem aplica este
+campo.**
 
 **Limitação declarada:** "em viagem" é fato administrativo que só o RH pode
 declarar; o schema de entrada não fornece esse dado; inferir por heurística
 seria criar regra não escrita. Recomendação de evolução: campo estruturado de
 viagem na entrada (ex.: booleano ou lista de períodos de viagem).
 
-**Origem:** AMB-006; política do RH, item 6.
+**Origem:** AMB-006, AMB-023; política do RH v4, item 6.
 
-**Aceite:** nenhum item do lote de exemplo aciona ampliação; itens de
-hospedagem não alteram os limites de outras categorias.
+**Aceite:** nenhum item dos lotes de exemplo aciona ampliação; o campo
+`acrescimo_em_viagem_percentual` do arquivo de política é ignorado.
+
+---
+
+### RF-17 — Política de reembolso externalizada
+
+**Regra:** Os limites e regras de categoria são lidos do arquivo `--politica`
+(formato `politica-v4.json`) e não estão embutidos no motor.
+
+A **política efetiva** de um colaborador é computada via merge:
+
+1. Parte-se do objeto `padrao` do arquivo de política.
+2. Se o `centro_custo` do colaborador tiver uma entrada em `centros_custo`,
+   cada categoria declarada nessa entrada **sobrescreve** a entrada equivalente
+   do `padrao`. Categorias do CC ausentes do `padrao` são adicionadas.
+   Categorias do `padrao` ausentes no CC são herdadas.
+3. Uma categoria com `limite: 0.00` é reconhecida pela política (RF-05) e
+   processada normalmente pelo passo 7, onde a cota estará esgotada desde o
+   primeiro item.
+4. O campo `periodicidade` dentro de cada entrada de categoria determina o
+   regime de agregação: `"dia"` = acumula por data; `"diaria"` = por
+   lançamento (cada entrada no arquivo = 1 unidade, sem acumulação entre
+   lançamentos do mesmo dia — ver AMB-024, RF-10).
+5. O campo raiz `nota_fiscal_obrigatoria_acima_de` é global; não há override
+   por centro de custo (AMB-022).
+6. O campo raiz `acrescimo_em_viagem_percentual` é ignorado pelo motor nesta
+   versão (AMB-023, RF-16).
+7. Um valor de `periodicidade` não reconhecido gera erro explícito no
+   carregamento da política — não silencia nem assume padrão.
+
+**Origem:** AMB-017, AMB-022, AMB-023, AMB-024.
+
+**Aceite:**
+- CC-COMERCIAL `alimentacao.limite = 90.00` → corte em R$90,00 (não R$60,00 do `padrao`)
+- CC-COMERCIAL `representacao` (ausente do `padrao`) → categoria reconhecida
+- CC-ENG-PLATAFORMA `hospedagem.limite = 0.00` → qualquer lançamento → `COTA_ESGOTADA`
+- CC-SUPORTE-N2 (ausente de `centros_custo`) → usa `padrao` integralmente
+
+---
+
+### RF-18 — Despesas em moeda estrangeira
+
+**Regra:** Quando uma despesa tem campo `moeda` com valor diferente de `"BRL"`
+(ou equivalente ausente), o motor busca a taxa de conversão no arquivo `--cambio`.
+
+Algoritmo de busca da taxa (para cada item em moeda ≠ BRL):
+
+1. Se a moeda (código ISO 4217) não existir como campo em **nenhuma** entrada do
+   objeto `taxas`, o item é rejeitado com `motivo_codigo = "MOEDA_NAO_SUPORTADA"`
+   (AMB-019).
+2. Se a moeda existe, busca-se a taxa na data exata da despesa; se ausente
+   (ex.: fim de semana), busca-se a data imediatamente anterior com registro
+   disponível para aquela moeda, sem limite de dias para trás (AMB-018).
+3. Se a moeda existe mas não há **nenhuma** data anterior ou igual à data da
+   despesa no arquivo, o item é rejeitado com `motivo_codigo = "TAXA_INDISPONIVEL"`.
+4. Taxa encontrada → `valor_considerado = valor_original × taxa`, depois
+   arredondamento half-up a 2 casas (RF-01). O motor usa o valor literal da taxa
+   conforme consta no arquivo; não interpola nem arredonda a taxa.
+
+Rejeições por câmbio ocorrem no **passo 1** do pipeline (RF-11) e descartam o
+item imediatamente, sem avaliação dos passos 2–7.
+
+Campos na saída por item (independentemente de rejeição ou não):
+- `moeda`: código ISO 4217 recebido na entrada; `"BRL"` quando ausente.
+- `taxa_cambio_aplicada`: valor numérico literal do arquivo quando conversão
+  ocorreu; `null` quando `moeda = "BRL"`.
+
+**Origem:** AMB-018, AMB-019, AMB-020, AMB-021.
+
+**Aceite:**
+- GBP: ausente da tabela → `MOEDA_NAO_SUPORTADA`; `taxa_cambio_aplicada = null`
+- EUR 22,00 em 2026-07-14 (taxa 5,93) → `valor_considerado = 130.46`; `taxa_cambio_aplicada = 5.93`
+- EUR 14,50 em 2026-07-15 (taxa 5,88) → `valor_considerado = 85.26`
+- EUR 30,00 em 2026-07-18 (sábado, sem taxa) → fallback 2026-07-17 (taxa 5,96) → `valor_considerado = 178.80`
+- USD 12,00 em 2026-07-21 (taxa 5,48) → `valor_considerado = 65.76`
+- USD 40,00 em 2026-07-20 (taxa 5,50) → `valor_considerado = 220.00`; depois `SEM_NF` (220 > 100, sem NF)
 
 ---
 
@@ -536,6 +633,15 @@ hospedagem não alteram os limites de outras categorias.
 | AMB-014 | (silêncio da política sobre dias da semana) | Despesa de sábado (d-012) é tratada diferente? | Mesmas regras para qualquer dia da semana ou feriado | Criar distinção seria inventar regra não escrita pelo RH — ver RF-15 |
 | AMB-015 | (ausência de ordem de precedência entre as 9 regras da política) | Qual regra vence quando múltiplas incidem? | Sequência fixa de 7 passos; política de motivo único | Ordem declarada é necessária para resultado determinístico e auditável — ver RF-11 |
 | AMB-016 | (política não define formato de saída) | Qual o schema, o enum de status e o enum de motivos? | Schema da seção 4.2; status derivado aritmeticamente; 7 códigos de motivo | Status aritmético é verificável sem conhecer a regra de origem; códigos estruturados permitem teste automático — ver RF-13, RF-14 |
+| AMB-017 | `centros_custo` em `politica-v4.json` — CC-ENG-PLATAFORMA declara `hospedagem.limite = 0.00` | Ausência de categoria no CC = herda do padrão ou exclui? Limite 0 = exclusão ou cota zero? | Merge: ausente no CC → herda do `padrao`; `limite: 0.00` é declaração explícita, não ausência → categoria reconhecida, cota zero | CC-ENG-PLATAFORMA declara a categoria com valor e observação "nao reembolsavel" — silêncio seria não precisar declará-la; consistência com LIMITE_DIARIO vs COTA_ESGOTADA — ver RF-05, RF-17 |
+| AMB-018 | `cambio.json` não publica taxas em fins de semana nem feriados — despesas de sábado/domingo ficam sem cotação exata | Como buscar a taxa quando a data exata da despesa está ausente? | Última taxa disponível na data ou anterior: busca a data exata; se ausente, data imediatamente anterior com registro; sem limite de dias para trás; se não houver nenhuma data anterior → `TAXA_INDISPONIVEL` | Câmbio não muda no fim de semana, só não é republicado; lookback sem limite é o comportamento de referências PTAX — ver RF-18 |
+| AMB-019 | `cambio.json` não contém GBP | Moeda inteira ausente da tabela vs moeda presente mas sem cotação anterior: diferença de código de erro? | Moeda ausente da tabela → `MOEDA_NAO_SUPORTADA`; moeda presente mas sem cotação anterior à data → `TAXA_INDISPONIVEL` (extremo de AMB-018) | Mesmo princípio que separou `LIMITE_DIARIO` de `COTA_ESGOTADA`: condição diferente merece código distinto; diagnóstico operacional é diferente — ver RF-18 |
+| AMB-020 | `e-002`: `valor = 22.00`, `moeda = "EUR"` — mas quanto entra no campo `valor_original` da saída? | `valor_original` ecoa o input em moeda estrangeira ou o equivalente em BRL? | `valor_original` ecoa o literal da entrada na moeda original; novos campos `moeda` e `taxa_cambio_aplicada` expõem a conversão | O campo se chama "original" — o valor que o colaborador submeteu é 22,00 EUR; alterar para BRL tornaria o campo opaco para auditoria — ver RF-18, seção 4.2 |
+| AMB-021 | Conversão de moeda: onde entra no pipeline? | Converte antes de qualquer regra (passo 1) ou mantém moeda estrangeira até o passo 7? | Conversão no passo 1, junto com o arredondamento half-up; `valor_considerado` é sempre BRL; todos os passos 2–7 operam exclusivamente sobre BRL | Um único ponto de normalização; passos de negócio não precisam saber sobre câmbio; consistente com AMB-010 — ver RF-01, RF-11 |
+| AMB-022 | `nota_fiscal_obrigatoria_acima_de = 100.00` em campo raiz de `politica-v4.json` | Limiar de NF é global ou pode ter override por CC? Comparação em BRL ou moeda original? | Global (campo raiz, sem override por CC); comparação sempre sobre `valor_considerado` em BRL — após conversão quando aplicável | Colocar em campo raiz sem estrutura de CC indica intenção global; consistente com AMB-021 (BRL é a referência única) — ver RF-07 |
+| AMB-023 | `politica-v4.json` contém `acrescimo_em_viagem_percentual: 50` | O campo no arquivo de política v4 ativa RF-16? | Não: campo presente para referência futura; motor ignora; RF-16 continua suspensa | O comunicado do Dia 2 não menciona ativação de RF-16; silêncio sobre mudança de +50% em todos os limites não é autorização implícita — ver RF-16 |
+| AMB-024 | Campo `periodicidade` nas entradas de categoria de `politica-v4.json` (`"dia"` vs `"diaria"`) | `periodicidade` controla quantas diárias contar por lançamento (AMB-003) ou o regime de agregação (por dia vs por lançamento)? | `periodicidade` controla o regime de agregação: `"dia"` = acumula por data; `"diaria"` = por lançamento; limitação de num_diarias (AMB-003) permanece ortogonal — cada lançamento ainda conta como 1 | Confundir os dois conceitos quebraria hospedagem (per-item) e alimentação (por-dia) de forma não óbvia; remove `CATEGORIAS_LIMITE_POR_LANCAMENTO` hardcoded — ver RF-17 |
+| AMB-025 | Motor v2 precisa de `--politica` e `--cambio` via CLI | Ambos obrigatórios, ou `--cambio` só obrigatório quando houver moeda estrangeira na entrada? | Ambos obrigatórios em toda execução; sem condicional | Erro condicional (descoberto após leitura do `--input`) é mais difícil de diagnosticar; obrigatório sempre é simples e consistente — ver RF-17, RF-18 |
 
 ---
 
@@ -558,6 +664,17 @@ hospedagem não alteram os limites de outras categorias.
 | Dois idênticos com valor > R$100 e sem NF | hipotético | Primeiro: `SEM_NF`; segundo: `DUPLICATA` (do primeiro) | RF-06, RF-07, RF-11 |
 | Valor zero | hipotético | Recusado `VALOR_NAO_POSITIVO` | RF-03 |
 | Cota esgotada por item anterior | d-002 (depois de d-001) | `COTA_ESGOTADA`, R$0,00, `status = "recusado"` | RF-08, RF-13 |
+| Limite superior de CC acima do padrão | e-001 (CC-COMERCIAL, representacao R$340,00, limite 300,00) | Parcial R$300,00 (`LIMITE_DIARIO`); não usa o limite do padrão | RF-05, RF-17 |
+| Moeda estrangeira em dia útil | e-002 (EUR 22,00 em 2026-07-14, taxa 5,93) | `valor_considerado = 130.46`; parcial R$90,00 pelo limite CC-COMERCIAL alimentacao | RF-01, RF-18, RF-08 |
+| Moeda estrangeira sem NF abaixo do limiar BRL | e-003 (EUR 14,50 em 2026-07-15, taxa 5,88 → BRL 85,26 ≤ 100) | NF não exigida; aprovado R$85,26 | RF-07, RF-18 |
+| Fallback de taxa para fim de semana | e-004 (EUR 30,00 em sábado 2026-07-18) | Busca a sexta 2026-07-17 (taxa 5,96); `valor_considerado = 178.80`; parcial R$90,00 | RF-18, AMB-018 |
+| Moeda estrangeira sem NF acima do limiar BRL | e-005 (USD 40,00, 2026-07-20, taxa 5,50 → BRL 220,00, sem NF) | `SEM_NF`; cota de transporte não afetada | RF-07, RF-18 |
+| Moeda inteiramente ausente da tabela de câmbio | e-006 (GBP, não listada) | `MOEDA_NAO_SUPORTADA` no passo 1; passo 2 em diante não avaliado | RF-18, AMB-019 |
+| Limite de CC mais alto para hospedagem | e-007 (CC-COMERCIAL, BRL 1200,00, limite 400,00) | Parcial R$400,00 (`LIMITE_DIARIO`) | RF-10, RF-17 |
+| CC com `limite: 0.00` para hospedagem (COTA_ESGOTADA) | CC-ENG-PLATAFORMA hospedagem | Qualquer valor → R$0,00 (`COTA_ESGOTADA`), `status = "recusado"` | RF-10, RF-17 |
+| CC desconhecido (não em `centros_custo`) herda padrao | CC-SUPORTE-N2 (f-001: alimentacao R$58,00, limite padrao 60,00) | Aprovado R$58,00; limite do padrao aplicado | RF-17, AMB-017 |
+| Categoria ausente do padrao E do CC (representacao em CC sem entrada) | f-003 (CC-SUPORTE-N2, representacao) | `CATEGORIA_INVALIDA`; representacao não está no padrao nem herdada | RF-05, RF-17 |
+| Moeda estrangeira aprovada integralmente | f-004 (USD 12,00 em 2026-07-21, taxa 5,48 → BRL 65,76, limite padrao transporte 80,00) | Aprovado R$65,76 | RF-18, RF-09 |
 
 ---
 
@@ -566,16 +683,19 @@ hospedagem não alteram os limites de outras categorias.
 Declarada em RF-11. Resumo:
 
 ```
-1. Normalização   (valor half-up 2 casas + categoria lowercase+trim)
+1. Normalização   (conversão de moeda → half-up 2 casas + categoria lowercase+trim)
+   moeda ≠ BRL: busca taxa em cambio.json (fallback ao dia anterior)
+   → moeda ausente da tabela  →  MOEDA_NAO_SUPORTADA
+   → sem cotação anterior      →  TAXA_INDISPONIVEL
 2. Domínio valor  →  valor_considerado ≤ 0   →  VALOR_NAO_POSITIVO
 3. Competência    →  data fora de período     →  FORA_COMPETENCIA
-4. Categoria      →  fora da lista canônica   →  CATEGORIA_INVALIDA
+4. Categoria      →  fora da política efetiva →  CATEGORIA_INVALIDA
 5. Duplicata      →  coincidência exata        →  DUPLICATA
-6. Nota fiscal    →  valor > 100 sem NF        →  SEM_NF
-7. Limite diário  →  aplica saldo da cota      →  LIMITE_DIARIO ou COTA_ESGOTADA
+6. Nota fiscal    →  valor_considerado (BRL) > limiar sem NF  →  SEM_NF
+7. Limite diário  →  aplica saldo da cota (política efetiva)  →  LIMITE_DIARIO ou COTA_ESGOTADA
 ```
 
-Passos 2–6: recusa total, sem consumo de cota, motivo único.
+Passos 1–6: recusa total, sem consumo de cota, motivo único.
 Passo 7: único que gera reembolso parcial (`status = "parcial"`) ou zera por
 cota esgotada (`status = "recusado"`, `motivo_codigo = "COTA_ESGOTADA"`).
 
@@ -602,4 +722,24 @@ O sistema está pronto quando, processando `exemplos/despesas-exemplo.json`:
 - [ ] Executar duas vezes com a mesma entrada produz arquivos de saída byte a byte idênticos
 - [ ] Nenhum item recebe `valor_reembolsavel` maior que o limite da categoria (60,00 / 80,00 / 250,00)
 - [ ] Nenhum item recebe limites ampliados de viagem
+
+Processando `exemplos/envelope/despesas-envelope.json` (colaborador CC-COMERCIAL, 10 itens):
+
+- [ ] e-001 → `status: "parcial"`, `valor_reembolsavel: 300.00`, `motivo_codigo: "LIMITE_DIARIO"` (representacao R$340,00 > limite CC 300,00)
+- [ ] e-002 → `moeda: "EUR"`, `taxa_cambio_aplicada: 5.93`, `valor_original: 22.00`, `valor_considerado: 130.46`; `status: "parcial"`, `valor_reembolsavel: 90.00`, `motivo_codigo: "LIMITE_DIARIO"`
+- [ ] e-003 → `moeda: "EUR"`, `taxa_cambio_aplicada: 5.88`, `valor_original: 14.50`, `valor_considerado: 85.26`; `status: "aprovado"` (85,26 ≤ 100 → NF não exigida; 85,26 ≤ 90 → dentro do limite)
+- [ ] e-004 → `moeda: "EUR"`, `taxa_cambio_aplicada: 5.96` (fallback de sábado 18/07 → sexta 17/07), `valor_considerado: 178.80`; `status: "parcial"`, `valor_reembolsavel: 90.00`, `motivo_codigo: "LIMITE_DIARIO"`
+- [ ] e-005 → `moeda: "USD"`, `taxa_cambio_aplicada: 5.50`, `valor_considerado: 220.00`; `status: "recusado"`, `motivo_codigo: "SEM_NF"` (220,00 > 100, sem NF)
+- [ ] e-006 → `moeda: "GBP"`; `status: "recusado"`, `motivo_codigo: "MOEDA_NAO_SUPORTADA"`, `taxa_cambio_aplicada: null`
+- [ ] e-007 → `moeda: "BRL"`, `taxa_cambio_aplicada: null`, `valor_considerado: 1200.00`; `status: "parcial"`, `valor_reembolsavel: 400.00`, `motivo_codigo: "LIMITE_DIARIO"` (limite hospedagem CC-COMERCIAL 400,00)
+- [ ] e-008 → `valor_considerado: 95.00`; `status: "parcial"`, `valor_reembolsavel: 90.00`, `motivo_codigo: "LIMITE_DIARIO"` (limite alimentacao CC-COMERCIAL 90,00)
+- [ ] e-009 → `status: "recusado"`, `motivo_codigo: "CATEGORIA_INVALIDA"`, `motivo_texto` contém `"coworking"`
+- [ ] e-010 → `moeda: "BRL"` (campo ausente → BRL), `taxa_cambio_aplicada: null`, `valor_considerado: 88.00`; `status: "aprovado"` (88,00 ≤ 90,00 limite CC-COMERCIAL)
+
+Processando `exemplos/envelope/despesas-envelope-cc-desconhecido.json` (colaborador CC-SUPORTE-N2, 4 itens):
+
+- [ ] f-001 → `valor_considerado: 58.00`; `status: "aprovado"` (CC-SUPORTE-N2 não em `centros_custo` → usa padrao; limite alimentacao 60,00; 58,00 ≤ 60,00)
+- [ ] f-002 → `valor_considerado: 310.00`; `status: "parcial"`, `valor_reembolsavel: 250.00`, `motivo_codigo: "LIMITE_DIARIO"`, `motivo_texto` cita `"limite de 1 diária"` (padrao hospedagem 250,00)
+- [ ] f-003 → `status: "recusado"`, `motivo_codigo: "CATEGORIA_INVALIDA"` (`representacao` ausente do `padrao` e CC-SUPORTE-N2 não tem registro)
+- [ ] f-004 → `moeda: "USD"`, `taxa_cambio_aplicada: 5.48`, `valor_original: 12.00`, `valor_considerado: 65.76`; `status: "aprovado"` (65,76 ≤ 80,00 limite padrao transporte_urbano)
 
