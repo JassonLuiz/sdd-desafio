@@ -26,6 +26,7 @@ class DespesaBruta:
     fornecedor: str
     valor_original: Decimal
     tem_nota_fiscal: bool
+    moeda: str = "BRL"
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,8 @@ class Despesa:
     valor_original: Decimal
     valor_considerado: Decimal
     tem_nota_fiscal: bool
+    moeda: str = "BRL"
+    taxa_cambio_aplicada: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -50,6 +53,8 @@ class ResultadoItem:
     motivo_codigo: str | None
     motivo_texto: str | None
     duplicata_de: str | None
+    moeda: str = "BRL"
+    taxa_cambio_aplicada: Decimal | None = None
 
 
 @dataclass(frozen=True)

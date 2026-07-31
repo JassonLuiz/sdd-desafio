@@ -33,6 +33,8 @@ def despesa_factory():
         fornecedor="Fornecedor Teste",
         valor=Decimal("30.00"),
         tem_nota_fiscal=True,
+        moeda="BRL",
+        taxa_cambio_aplicada=None,
     ):
         from src.modelos import Despesa
         valor_considerado = valor.quantize(Decimal("0.01"), ROUND_HALF_UP)
@@ -45,5 +47,7 @@ def despesa_factory():
             valor_original=valor,
             valor_considerado=valor_considerado,
             tem_nota_fiscal=tem_nota_fiscal,
+            moeda=moeda,
+            taxa_cambio_aplicada=taxa_cambio_aplicada,
         )
     return _factory
