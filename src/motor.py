@@ -6,6 +6,7 @@ from src.modelos import (
     Resultado, ResultadoItem, Resumo,
 )
 from src.normalizacao import normalizar_categoria, normalizar_valor
+from src.parser_cambio import MoedaNaoSuportadaError, TaxaIndisponivelError, buscar_taxa
 from src.regras import (
     fmt_valor,
     verificar_categoria,
@@ -29,6 +30,21 @@ def _texto_passo7(categoria: str, motivo_codigo: str | None, valor_reembolsavel:
     return None
 
 
+def _recusar_passo1(bruta: DespesaBruta, motivo_codigo: str, motivo_texto: str) -> ResultadoItem:
+    return ResultadoItem(
+        id=bruta.id,
+        status="recusado",
+        valor_original=bruta.valor_original,
+        valor_considerado=Decimal("0.00"),
+        valor_reembolsavel=Decimal("0.00"),
+        motivo_codigo=motivo_codigo,
+        motivo_texto=motivo_texto,
+        duplicata_de=None,
+        moeda=bruta.moeda,
+        taxa_cambio_aplicada=None,
+    )
+
+
 def _derivar_status(valor_reembolsavel: Decimal, valor_considerado: Decimal) -> str:
     if valor_reembolsavel == valor_considerado:
         return "aprovado"
@@ -37,12 +53,43 @@ def _derivar_status(valor_reembolsavel: Decimal, valor_considerado: Decimal) -> 
     return "parcial"
 
 
-def processar(colaborador: Colaborador, periodo: Periodo, despesas_brutas: list[DespesaBruta]) -> Resultado:
+def processar(
+    colaborador: Colaborador,
+    periodo: Periodo,
+    despesas_brutas: list[DespesaBruta],
+    tabela_cambio: dict | None = None,
+) -> Resultado:
+    if tabela_cambio is None and any(b.moeda != "BRL" for b in despesas_brutas):
+        raise ValueError(
+            "tabela_cambio é obrigatória quando o lote contém despesas em moeda estrangeira"
+        )
+
     vistos: dict = {}
     gc = GerenciadorCotas()
     itens: list[ResultadoItem] = []
 
     for bruta in despesas_brutas:
+        # Passo 1a: conversão de moeda (RF-18, AMB-021)
+        taxa_cambio_aplicada = None
+        if bruta.moeda != "BRL":
+            try:
+                taxa = buscar_taxa(tabela_cambio, bruta.moeda, bruta.data)
+                valor_base = bruta.valor_original * taxa
+                taxa_cambio_aplicada = taxa
+            except MoedaNaoSuportadaError:
+                texto = f"moeda não suportada: {bruta.moeda}"
+                itens.append(_recusar_passo1(bruta, "MOEDA_NAO_SUPORTADA", texto))
+                continue
+            except TaxaIndisponivelError:
+                texto = (
+                    f"taxa de câmbio indisponível para {bruta.moeda}: "
+                    f"nenhuma cotação anterior a {bruta.data} na tabela"
+                )
+                itens.append(_recusar_passo1(bruta, "TAXA_INDISPONIVEL", texto))
+                continue
+        else:
+            valor_base = bruta.valor_original
+
         despesa = Despesa(
             id=bruta.id,
             data=bruta.data,
@@ -50,8 +97,10 @@ def processar(colaborador: Colaborador, periodo: Periodo, despesas_brutas: list[
             descricao=bruta.descricao,
             fornecedor=bruta.fornecedor,
             valor_original=bruta.valor_original,
-            valor_considerado=normalizar_valor(bruta.valor_original),
+            valor_considerado=normalizar_valor(valor_base),
             tem_nota_fiscal=bruta.tem_nota_fiscal,
+            moeda=bruta.moeda,
+            taxa_cambio_aplicada=taxa_cambio_aplicada,
         )
 
         item = verificar_dominio_valor(despesa)
@@ -71,6 +120,8 @@ def processar(colaborador: Colaborador, periodo: Periodo, despesas_brutas: list[
                 motivo_codigo=motivo_codigo,
                 motivo_texto=_texto_passo7(despesa.categoria, motivo_codigo, valor_reembolsavel, despesa.valor_considerado),
                 duplicata_de=None,
+                moeda=despesa.moeda,
+                taxa_cambio_aplicada=despesa.taxa_cambio_aplicada,
             )
 
         itens.append(item)

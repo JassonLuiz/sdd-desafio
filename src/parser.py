@@ -31,6 +31,7 @@ def carregar_entrada(caminho: str | Path) -> tuple[Colaborador, Periodo, list[De
             fornecedor=str(item["fornecedor"]),
             valor_original=item["valor"],
             tem_nota_fiscal=bool(item["tem_nota_fiscal"]),
+            moeda=str(item.get("moeda", "BRL")),
         )
         for item in dados["despesas"]
     ]

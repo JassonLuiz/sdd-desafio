@@ -13,6 +13,8 @@ def _recusar(despesa: Despesa, motivo_codigo: str, motivo_texto: str, duplicata_
         motivo_codigo=motivo_codigo,
         motivo_texto=motivo_texto,
         duplicata_de=duplicata_de,
+        moeda=despesa.moeda,
+        taxa_cambio_aplicada=despesa.taxa_cambio_aplicada,
     )
 
 
