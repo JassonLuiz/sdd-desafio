@@ -30,7 +30,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     instanciação manual com valores Decimal funciona
   - **Commit:** ` `
 
-- [ ] **T-003** — Parsing da entrada com `parse_float=Decimal, parse_int=Decimal`
+- [x] **T-003** — Parsing da entrada com `parse_float=Decimal, parse_int=Decimal`
     (`src/parser.py`)
   - **O que faz:** função `carregar_entrada(caminho) → tuple[Colaborador, Periodo,
     list[DespesaBruta]]` que lê JSON via `json.load(f, parse_float=Decimal,
@@ -47,7 +47,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ## Fase 2 — Normalização
 
-- [ ] **T-004** — Normalização de valor monetário (`src/normalizacao.py`)
+- [x] **T-004** — Normalização de valor monetário (`src/normalizacao.py`)
   - **O que faz:** função `normalizar_valor(v: Decimal) → Decimal` que aplica
     `quantize(Decimal("0.01"), ROUND_HALF_UP)`. Ponto único de arredondamento
     em todo o sistema.
@@ -57,7 +57,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf01_valor_335_arredonda_para_34` — `normalizar_valor(Decimal("33.335")) == Decimal("33.34")`
   - **Commit:** ` `
 
-- [ ] **T-005** — Normalização de categoria (`src/normalizacao.py`)
+- [x] **T-005** — Normalização de categoria (`src/normalizacao.py`)
   - **O que faz:** função `normalizar_categoria(c: str) → str` que aplica
     `c.strip().lower()`. Sem normalização de acentos ou correção ortográfica.
   - **Atende:** RF-02, AMB-011
@@ -71,7 +71,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ## Fase 3 — Verificadores de recusa (passos 2–6 do RF-11)
 
-- [ ] **T-006** — Verificador passo 2: domínio de valor (`src/regras.py`)
+- [x] **T-006** — Verificador passo 2: domínio de valor (`src/regras.py`)
   - **O que faz:** função `verificar_dominio_valor(despesa) → ResultadoItem | None`
     que retorna item recusado com `VALOR_NAO_POSITIVO` se
     `valor_considerado ≤ 0`, ou `None` se passou.
@@ -83,7 +83,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf03_nao_consome_cota` — item recusado não altera estado de cotas
   - **Commit:** ` `
 
-- [ ] **T-007** — Verificador passo 3: competência (`src/regras.py`)
+- [x] **T-007** — Verificador passo 3: competência (`src/regras.py`)
   - **O que faz:** função `verificar_competencia(despesa, periodo) → ResultadoItem | None`
     que retorna `FORA_COMPETENCIA` se `despesa.data < periodo.inicio` ou
     `despesa.data > periodo.fim`.
@@ -95,7 +95,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf04_limite_inclusivo_fim` — data `2026-07-31` → passa
   - **Commit:** ` `
 
-- [ ] **T-008** — Verificador passo 4: categoria inválida (`src/regras.py`)
+- [x] **T-008** — Verificador passo 4: categoria inválida (`src/regras.py`)
   - **O que faz:** define constante `CATEGORIAS_VALIDAS = {"alimentacao",
     "transporte_urbano", "hospedagem"}` em `regras.py`; função
     `verificar_categoria(despesa) → ResultadoItem | None` que retorna
@@ -108,7 +108,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     passa no verificador
   - **Commit:** ` `
 
-- [ ] **T-009** — Verificador passo 5: duplicatas (`src/regras.py`)
+- [x] **T-009** — Verificador passo 5: duplicatas (`src/regras.py`)
   - **O que faz:** função `verificar_duplicata(despesa, vistos: dict) → ResultadoItem | None`
     que constrói chave `(data, categoria, descricao, fornecedor, valor_considerado,
     tem_nota_fiscal)`; se chave já existe em `vistos`, retorna `DUPLICATA` com
@@ -124,7 +124,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf06_nao_consome_cota` — duplicata recusada não afeta cotas
   - **Commit:** ` `
 
-- [ ] **T-010** — Verificador passo 6: nota fiscal (`src/regras.py`)
+- [x] **T-010** — Verificador passo 6: nota fiscal (`src/regras.py`)
   - **O que faz:** define constante `GATILHO_NF = Decimal("100.00")`; função
     `verificar_nf(despesa) → ResultadoItem | None` que retorna `SEM_NF` se
     `despesa.valor_considerado > GATILHO_NF` e `not despesa.tem_nota_fiscal`.
@@ -140,7 +140,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ## Fase 4 — Passo 7: cotas diárias
 
-- [ ] **T-011** — Cálculo de cotas diárias e reembolso parcial (`src/cotas.py`)
+- [x] **T-011** — Cálculo de cotas diárias e reembolso parcial (`src/cotas.py`)
   - **O que faz:** classe ou módulo `GerenciadorCotas` com estado
     `dict[(date, str), Decimal]` (consumido por dia/categoria); define constantes
     `LIMITE_DIARIO = {"alimentacao": Decimal("60.00"), "transporte_urbano":
@@ -170,7 +170,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ## Fase 5 — Pipeline e status
 
-- [ ] **T-012** — Pipeline completo e status derivado (`src/motor.py`)
+- [x] **T-012** — Pipeline completo e status derivado (`src/motor.py`)
   - **O que faz:** função `processar(colaborador, periodo, despesas_brutas) →
     Resultado` que: (1) normaliza cada `DespesaBruta` → `Despesa`; (2) aplica
     os verificadores dos passos 2–6 em ordem, parando no primeiro que retorna
@@ -195,7 +195,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `valor_reembolsavel == 0` → `status == "recusado"`
   - **Commit:** ` `
 
-- [ ] **T-013** — Testes de RF-15 e RF-16 (dias da semana e viagem)
+- [x] **T-013** — Testes de RF-15 e RF-16 (dias da semana e viagem)
   - **O que faz:** adiciona `tests/test_rf15_fim_de_semana.py` e
     `tests/test_rf16_viagem_suspensa.py`. Não requer novo código — os testes
     exercitam o pipeline existente para confirmar comportamento declarado na spec.
@@ -212,7 +212,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ## Fase 6 — Resumo, serializador e CLI
 
-- [ ] **T-014** — Cálculo do resumo agregado (`src/motor.py`)
+- [x] **T-014** — Cálculo do resumo agregado (`src/motor.py`)
   - **O que faz:** após construir a lista de itens, calcula `Resumo`:
     `total_solicitado = Σ valor_considerado` dos itens com `valor_considerado > 0`;
     `total_reembolsavel = Σ valor_reembolsavel`; `total_recusado = total_solicitado
@@ -224,7 +224,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `itens_aprovados == 1`, `itens_parciais == 1`, `itens_recusados == 1`
   - **Commit:** ` `
 
-- [ ] **T-015** — Serializador determinístico (`src/serializador.py`)
+- [x] **T-015** — Serializador determinístico (`src/serializador.py`)
   - **O que faz:** função `serializar(resultado: Resultado) → str` que constrói
     `dict` com ordem de campos explícita e aplica `json.dumps(ensure_ascii=False,
     indent=2)`. Encoder customizado: campos calculados → `quantize("0.01")` → número
@@ -238,7 +238,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     campos calculados têm exatamente 2 casas decimais
   - **Commit:** ` `
 
-- [ ] **T-016** — CLI com argparse (`src/cli.py`)
+- [x] **T-016** — CLI com argparse (`src/cli.py`)
   - **O que faz:** entry point `python -m src.cli calcular --input <arq>
     --output <arq>` que carrega entrada via `parser.carregar_entrada()`,
     chama `motor.processar()`, serializa via `serializador.serializar()` e
@@ -255,7 +255,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ## Fase 7 — Testes de integração e borda
 
-- [ ] **T-017** — Testes de integração: despesas-exemplo.json (`tests/test_integracao.py`)
+- [x] **T-017** — Testes de integração: despesas-exemplo.json (`tests/test_integracao.py`)
   - **O que faz:** carrega `exemplos/despesas-exemplo.json` via path derivado de
     `__file__`, chama `motor.processar()` e verifica os 17 critérios de aceite
     da seção 9 da spec. Um assert por item, comentado com o id (ex.:
@@ -264,7 +264,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
   - **Aceite:** todos os 17 asserts passam sem modificação do arquivo de entrada
   - **Commit:** ` `
 
-- [ ] **T-018** — Testes de casos de borda (`tests/test_borda.py`)
+- [x] **T-018** — Testes de casos de borda (`tests/test_borda.py`)
   - **O que faz:** casos da seção 7 da spec que cruzam múltiplas regras e não são
     cobertos pelos testes de RF individuais:
     - `test_borda_dois_identicos_acima_100_sem_nf` — primeiro `SEM_NF`, segundo `DUPLICATA`
@@ -280,7 +280,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
 
 ## Fase 8 — Documentação
 
-- [ ] **T-019** — README (`README.md`)
+- [x] **T-019** — README (`README.md`)
   - **O que faz:** documenta pré-requisitos (Python 3.11+), instalação (`pip install
     pytest`), como rodar (`python -m src.cli calcular --input despesas.json
     --output resultado.json`) e como testar (`pytest`). Inclui exemplo de saída
@@ -306,7 +306,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     DECISIONS.md com 13 entradas; tasks.md com T-020..T-030
   - **Commit:** `docs(spec): spec v2.0 — RF-17/18, AMB-017..025, D-005..D-013, T-020..T-030`
 
-- [ ] **T-021** — Modelos v2: novos campos de moeda (`src/modelos.py`)
+- [x] **T-021** — Modelos v2: novos campos de moeda (`src/modelos.py`)
   - **O que faz:** adiciona `moeda: str` (default `"BRL"`) e nenhum campo de taxa em
     `DespesaBruta`; adiciona `moeda: str` e `taxa_cambio_aplicada: Decimal | None` em
     `Despesa` e `ResultadoItem`. Atualiza `conftest.py` se fixtures precisarem de
@@ -316,7 +316,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     ainda passa (campos com default `"BRL"` / `None` não quebram testes anteriores)
   - **Commit:** `feat(T-021): modelos v2 — campos moeda e taxa_cambio_aplicada`
 
-- [ ] **T-022** — Parser de política (`src/parser_politica.py`)
+- [x] **T-022** — Parser de política (`src/parser_politica.py`)
   - **O que faz:** função `carregar_politica(caminho) → dict` que lê
     `politica-v4.json` como JSON puro (valores Decimal para limites); função
     `politica_efetiva(politica: dict, centro_custo: str) → dict` que aplica o
@@ -334,7 +334,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf17_periodicidade_invalida_erro` — periodicidade `"semana"` → `ValueError`
   - **Commit:** `feat(T-022): parser de política com merge padrao+CC`
 
-- [ ] **T-023** — Parser de câmbio e busca de taxa (`src/parser_cambio.py`)
+- [x] **T-023** — Parser de câmbio e busca de taxa (`src/parser_cambio.py`)
   - **O que faz:** função `carregar_cambio(caminho) → dict` que lê `cambio.json`
     com valores Decimal; função `buscar_taxa(tabela: dict, moeda: str, data: date)
     → Decimal` que: (1) moeda ausente da tabela → `MoedaNaoSuportadaError`; (2)
@@ -349,7 +349,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf18_sem_data_anterior` — USD em 2026-07-01 (anterior a qualquer data na tabela) → `TaxaIndisponivelError`
   - **Commit:** `feat(T-023): parser de câmbio com fallback de data`
 
-- [ ] **T-024** — Conversão de moeda no passo 1 (`src/motor.py`, `src/normalizacao.py`)
+- [x] **T-024** — Conversão de moeda no passo 1 (`src/motor.py`, `src/normalizacao.py`)
   - **O que faz:** no motor, antes de chamar `normalizar_valor`, verifica se
     `despesa_bruta.moeda != "BRL"`. Se diferente: chama `buscar_taxa`; em
     `MoedaNaoSuportadaError` → retorna `ResultadoItem` com `MOEDA_NAO_SUPORTADA`;
@@ -366,7 +366,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf18_valor_original_preservado` — EUR 22,00 convertido → `valor_original == Decimal("22.00")`, `moeda == "EUR"`
   - **Commit:** `feat(T-024): conversão de moeda no passo 1 do pipeline`
 
-- [ ] **T-025** — Refatorar `verificar_categoria` para política efetiva (`src/regras.py`)
+- [x] **T-025** — Refatorar `verificar_categoria` para política efetiva (`src/regras.py`)
   - **O que faz:** remove constante `CATEGORIAS_VALIDAS` hardcoded; `verificar_categoria`
     recebe `politica_eff: dict` como parâmetro adicional e verifica `categoria in politica_eff`.
     Atualiza chamada no motor e testes existentes que passam `CATEGORIAS_VALIDAS`.
@@ -378,7 +378,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     suite existente de RF-05 ainda passa com política CC-ENG-PLATAFORMA ou padrao
   - **Commit:** `feat(T-025): verificar_categoria com política efetiva`
 
-- [ ] **T-026** — Refatorar `verificar_nf` para limiar da política (`src/regras.py`)
+- [x] **T-026** — Refatorar `verificar_nf` para limiar da política (`src/regras.py`)
   - **O que faz:** remove constante `GATILHO_NF` hardcoded; `verificar_nf` recebe
     `gatilho_nf: Decimal` como parâmetro (lido de `nota_fiscal_obrigatoria_acima_de`
     da política). Atualiza chamada no motor.
@@ -389,7 +389,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf07_gatilho_alternativo` — com gatilho 50,00 → R$50,01 sem NF → `SEM_NF`
   - **Commit:** `feat(T-026): verificar_nf com limiar da política`
 
-- [ ] **T-027** — Refatorar `GerenciadorCotas` para limites e periodicidade da política (`src/cotas.py`)
+- [x] **T-027** — Refatorar `GerenciadorCotas` para limites e periodicidade da política (`src/cotas.py`)
   - **O que faz:** remove `LIMITE_DIARIO` hardcoded (ou mantém como fallback interno);
     `GerenciadorCotas` recebe `politica_eff: dict` no construtor; extrai `limite` e
     `periodicidade` por categoria. `periodicidade = "dia"` → chave `(data, categoria)`;
@@ -404,7 +404,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     `test_rf09_cc_comercial_transporte_150` — transporte CC-COMERCIAL → corte em R$150,00
   - **Commit:** `feat(T-027): GerenciadorCotas com política efetiva e periodicidade`
 
-- [ ] **T-028** — Atualizar serializador e CLI (`src/serializador.py`, `src/cli.py`)
+- [x] **T-028** — Atualizar serializador e CLI (`src/serializador.py`, `src/cli.py`)
   - **O que faz:** serializador: inclui `moeda` e `taxa_cambio_aplicada` (em posição
     após `valor_original`) na serialização de cada item; `taxa_cambio_aplicada` como
     número com 2dp quando não-nulo, `null` quando nulo. CLI: adiciona `--politica`
@@ -419,7 +419,7 @@ Documentação: `docs(spec):` · `docs(plan):` · `docs(tasks):`
     CLI sem `--politica` → erro e código 1
   - **Commit:** `feat(T-028): serializador e CLI com campos v2 e novos argumentos`
 
-- [ ] **T-029** — Testes de integração: envelope (`tests/test_integracao_envelope.py`)
+- [x] **T-029** — Testes de integração: envelope (`tests/test_integracao_envelope.py`)
   - **O que faz:** carrega `exemplos/envelope/despesas-envelope.json` e
     `exemplos/envelope/despesas-envelope-cc-desconhecido.json` com a política v4 e
     a tabela de câmbio do envelope; verifica os critérios de aceite da seção 9 para
