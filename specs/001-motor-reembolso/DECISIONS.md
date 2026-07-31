@@ -10,6 +10,30 @@ Ordem cronológica inversa: a mais recente primeiro.
 
 ---
 
+## D-014 — `_POLITICA_V3`: fallback temporário em `motor.py` durante migração para política externalizada · `2026-07-30`
+
+**Gatilho:** T-025 refatorou `verificar_categoria` para receber `politica_eff`
+como parâmetro. O motor passou a exigir uma política para verificar categorias,
+mas `test_integracao.py` (que testa o lote v3 `despesas-exemplo.json`) ainda
+chama `processar()` sem passar `politica_eff` — e continuará assim até T-028
+tornar `--politica` obrigatório no CLI.
+
+**Decisão:** `motor.py` define `_POLITICA_V3` — um dict com as três categorias
+e limites da v3, no mesmo formato que `politica_efetiva()` retorna. Usado como
+fallback quando `processar(politica_eff=None)`. Não é uma constante de negócio:
+é scaffolding de migração.
+
+**Por quê:** A alternativa (passar politica_eff em todos os testes existentes
+de uma vez) acoplaria T-025 a T-028 e tornaria o diff maior e mais difícil de
+revisar. Migração incremental é preferível quando cada task deve caber em um
+commit revisável.
+
+**Quando será removido:** em T-028, quando `processar` receber `politica_eff`
+obrigatoriamente via CLI. Nesse ponto `_POLITICA_V3` é deletado e
+`test_integracao.py` atualizado para passar a política v4 carregada do arquivo.
+
+---
+
 ## D-013 — Argumentos `--politica` e `--cambio` são obrigatórios em toda execução · `2026-07-30`
 
 **Gatilho:** AMB-025 — motor v2 precisa de dois arquivos novos na CLI. A

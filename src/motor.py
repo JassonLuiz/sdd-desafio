@@ -17,6 +17,14 @@ from src.regras import (
 )
 
 
+# Fallback v3 — removido quando T-028 tornar --politica obrigatório no CLI
+_POLITICA_V3 = {
+    "alimentacao":       {"limite": Decimal("60.00"),  "periodicidade": "dia"},
+    "transporte_urbano": {"limite": Decimal("80.00"),  "periodicidade": "dia"},
+    "hospedagem":        {"limite": Decimal("250.00"), "periodicidade": "diaria"},
+}
+
+
 def _texto_passo7(categoria: str, motivo_codigo: str | None, valor_reembolsavel: Decimal, valor_considerado: Decimal) -> str | None:
     if motivo_codigo is None:
         return None
@@ -58,7 +66,9 @@ def processar(
     periodo: Periodo,
     despesas_brutas: list[DespesaBruta],
     tabela_cambio: dict | None = None,
+    politica_eff: dict | None = None,
 ) -> Resultado:
+    _eff = politica_eff if politica_eff is not None else _POLITICA_V3
     if tabela_cambio is None and any(b.moeda != "BRL" for b in despesas_brutas):
         raise ValueError(
             "tabela_cambio é obrigatória quando o lote contém despesas em moeda estrangeira"
@@ -105,7 +115,7 @@ def processar(
 
         item = verificar_dominio_valor(despesa)
         item = item or verificar_competencia(despesa, periodo)
-        item = item or verificar_categoria(despesa)
+        item = item or verificar_categoria(despesa, _eff)
         item = item or verificar_duplicata(despesa, vistos)
         item = item or verificar_nf(despesa)
 

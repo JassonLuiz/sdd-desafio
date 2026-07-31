@@ -22,7 +22,6 @@ def fmt_valor(v: Decimal) -> str:
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-CATEGORIAS_VALIDAS = {"alimentacao", "transporte_urbano", "hospedagem"}
 GATILHO_NF = Decimal("100.00")
 
 
@@ -48,8 +47,8 @@ def verificar_duplicata(despesa: Despesa, vistos: dict) -> ResultadoItem | None:
     return None
 
 
-def verificar_categoria(despesa: Despesa) -> ResultadoItem | None:
-    if despesa.categoria not in CATEGORIAS_VALIDAS:
+def verificar_categoria(despesa: Despesa, politica_eff: dict) -> ResultadoItem | None:
+    if despesa.categoria not in politica_eff:
         texto = f"categoria fora da política: {despesa.categoria}"
         return _recusar(despesa, "CATEGORIA_INVALIDA", texto)
     return None
