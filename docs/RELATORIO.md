@@ -395,6 +395,47 @@ uma tarefa (README) onde ninguém tinha pedido explicitamente essa checagem.
 **Onde está a evidência:** commit `d2a3b6`; sessão 02, trecho "Os valores que
 coloquei no README estavam errados. Corrijo antes de commitar."
 
+### Caso 11 — Reincidência do `replace_all` corrompendo string literal (T-027)
+
+**O que ele propôs:** Na T-027 (`GerenciadorCotas` com política efetiva),
+renomear a constante `LIMITE_DIARIO` para `_LIMITE_V3` nos arquivos de teste
+via substituição automatizada corrompeu, de novo, as ocorrências da **string
+literal** `"LIMITE_DIARIO"` usada como valor de `motivo_codigo` em quatro
+asserções de `test_integracao.py` (`assert item.motivo_codigo ==
+"_LIMITE_V3"`, quando deveria continuar `"LIMITE_DIARIO"`).
+
+**Por que estava errado:** É a mesma classe de erro do episódio do
+`replace_all` na T-012 (ver Diligência): um identificador de código
+(`LIMITE_DIARIO`, a constante Python) e uma string literal homônima de dado de
+negócio (`"LIMITE_DIARIO"`, o valor do enum `motivo_codigo` definido na spec)
+compartilham o texto, e uma substituição automatizada sem distinção semântica
+corrompe as duas juntas.
+
+**Como eu detectei:** O teste falhou (`assert "LIMITE_DIARIO" ==
+"_LIMITE_V3"`), e reconheci o padrão imediatamente pela recorrência — apontei
+a causa raiz antes mesmo do agente rodar o comando de debug que ele havia
+proposto.
+
+**O que eu fiz:** Mandei reverter as quatro linhas para o valor correto, e
+exigi (não sugeri) duas varreduras completas por grep — uma por `_LIMITE_V3`
+(confirmando que só aparece como identificador correto) e outra por
+`"LIMITE_DIARIO"` (confirmando as 14 ocorrências corretas em todos os arquivos
+de teste, sem nenhuma sobra corrompida) — antes de aceitar a correção como
+completa. As duas vieram limpas.
+
+**Onde está a evidência:** sessão 03 (implementação do envelope), trechos "Já
+encontrei a causa antes de você investigar mais" e "Resultados limpos".
+
+**Padrão que eu notei — reincidência:** Este é o mesmo erro do episódio do
+`replace_all` (T-012), reincidente aqui na T-027 — não um incidente isolado.
+"Encontrar e substituir" automatizado em texto que mistura identificador de
+código e string literal de dado continua sendo o ponto cego técnico mais
+recorrente do dia, mesmo após ter sido pego e corrigido explicitamente na
+primeira ocorrência. Isso reforça uma conclusão de processo, não só de
+código: a exigência de prova nova (grep completo, não afirmação de "corrigi")
+precisa ser sistemática toda vez que uma substituição textual em massa
+acontecer, independentemente de já ter sido ensinada uma vez.
+
 **Padrão que eu notei:** Os erros do agente se distribuem em seis famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
 (Caso 2), decisão registrada e depois invertida na redação (Caso 4);
