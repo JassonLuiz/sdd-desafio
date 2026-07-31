@@ -1,12 +1,17 @@
 from decimal import Decimal
 from pathlib import Path
 
-from src.cotas import LIMITE_DIARIO
 from src.motor import processar
 from src.normalizacao import normalizar_categoria
 from src.parser import carregar_entrada
 
 _EXEMPLO = Path(__file__).parent.parent / "exemplos" / "despesas-exemplo.json"
+
+_LIMITE_V3 = {
+    "alimentacao": Decimal("60.00"),
+    "transporte_urbano": Decimal("80.00"),
+    "hospedagem": Decimal("250.00"),
+}
 
 
 def test_rf16_nenhum_item_com_limite_ampliado():
@@ -19,7 +24,7 @@ def test_rf16_nenhum_item_com_limite_ampliado():
     categoria_por_id = {d.id: normalizar_categoria(d.categoria) for d in despesas_brutas}
     for item in resultado.itens:
         categoria = categoria_por_id[item.id]
-        limite = LIMITE_DIARIO.get(categoria)
+        limite = _LIMITE_V3.get(categoria)
         if limite is None:
             continue  # categoria inválida já recusada no passo 4
         assert item.valor_reembolsavel <= limite, (

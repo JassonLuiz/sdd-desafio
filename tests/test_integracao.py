@@ -3,13 +3,18 @@ from pathlib import Path
 
 import pytest
 
-from src.cotas import LIMITE_DIARIO
 from src.motor import processar
 from src.normalizacao import normalizar_categoria
 from src.parser import carregar_entrada
 from src.serializador import serializar
 
 _EXEMPLO = Path(__file__).parent.parent / "exemplos" / "despesas-exemplo.json"
+
+_LIMITE_V3 = {
+    "alimentacao": Decimal("60.00"),
+    "transporte_urbano": Decimal("80.00"),
+    "hospedagem": Decimal("250.00"),
+}
 
 
 @pytest.fixture(scope="module")
@@ -151,8 +156,8 @@ def test_integracao_nenhum_item_acima_do_limite_da_categoria():
     por_id = {item.id: item for item in resultado.itens}
     for bruta in despesas:
         categoria = normalizar_categoria(bruta.categoria)
-        if categoria in LIMITE_DIARIO:
-            assert por_id[bruta.id].valor_reembolsavel <= LIMITE_DIARIO[categoria]
+        if categoria in _LIMITE_V3:
+            assert por_id[bruta.id].valor_reembolsavel <= _LIMITE_V3[categoria]
 
 
 def test_integracao_viagem_suspensa_sem_ampliacao(_por_id):

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from src.cotas import GerenciadorCotas, LIMITE_DIARIO
+from src.cotas import GerenciadorCotas
 from src.modelos import (
     Colaborador, DespesaBruta, Despesa, Periodo,
     Resultado, ResultadoItem, Resumo,
@@ -25,7 +25,7 @@ _POLITICA_V3 = {
 }
 
 
-def _texto_passo7(categoria: str, motivo_codigo: str | None, valor_reembolsavel: Decimal, valor_considerado: Decimal) -> str | None:
+def _texto_passo7(categoria: str, motivo_codigo: str | None, valor_reembolsavel: Decimal, valor_considerado: Decimal, politica_eff: dict) -> str | None:
     if motivo_codigo is None:
         return None
     if motivo_codigo == "LIMITE_DIARIO":
@@ -33,7 +33,7 @@ def _texto_passo7(categoria: str, motivo_codigo: str | None, valor_reembolsavel:
             return "limite de 1 diária aplicado (campo num_diarias ausente do schema)"
         return f"limite diário de {categoria}: reembolsado {fmt_valor(valor_reembolsavel)} de {fmt_valor(valor_considerado)}"
     if motivo_codigo == "COTA_ESGOTADA":
-        limite = LIMITE_DIARIO[categoria]
+        limite = politica_eff[categoria]["limite"]
         return f"cota diária de {categoria} esgotada: {fmt_valor(limite)} já consumidos por itens anteriores no dia"
     return None
 
@@ -77,7 +77,7 @@ def processar(
         )
 
     vistos: dict = {}
-    gc = GerenciadorCotas()
+    gc = GerenciadorCotas(_eff)
     itens: list[ResultadoItem] = []
 
     for bruta in despesas_brutas:
@@ -130,7 +130,7 @@ def processar(
                 valor_considerado=despesa.valor_considerado,
                 valor_reembolsavel=valor_reembolsavel,
                 motivo_codigo=motivo_codigo,
-                motivo_texto=_texto_passo7(despesa.categoria, motivo_codigo, valor_reembolsavel, despesa.valor_considerado),
+                motivo_texto=_texto_passo7(despesa.categoria, motivo_codigo, valor_reembolsavel, despesa.valor_considerado, _eff),
                 duplicata_de=None,
                 moeda=despesa.moeda,
                 taxa_cambio_aplicada=despesa.taxa_cambio_aplicada,
