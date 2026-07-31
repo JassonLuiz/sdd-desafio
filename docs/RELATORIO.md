@@ -235,7 +235,7 @@ antes do commit".
 na T-003, o helper de fixtures passava o valor por float Python antes de
 serializar o JSON, e o agente defendeu a suficiência com o argumento do repr
 mínimo. Barrado pelo mesmo princípio: em precisão numérica, o caminho do dado
-importa mais que o resultado do caso feliz. Evidência: sessão 02, trecho
+importa mais que o resultado do caso feliz. Evidência: `docs/sessions/02-implementacao-base-v3.md`, trecho
 "Quase aprovado — um ajuste no helper".
 
 ### Caso 6 — Teste cujo nome prometia mais do que exercitava
@@ -262,7 +262,7 @@ pipeline em miniatura — chama `normalizar_categoria("ALIMENTACAO")` e só ent�
 `verificar_categoria()` com o resultado, provando a cadeia real
 (`test_rf05_maiusculas_normalizadas_e_aceitas`).
 
-**Onde está a evidência:** sessão 02, trecho "Antes de aprovar: o teste
+**Onde está a evidência:** `docs/sessions/02-implementacao-base-v3.md`, trecho "Antes de aprovar: o teste
 test_rf05_categoria_apos_normalizacao_aceita não testa o que o nome promete".
 
 ### Caso 7 — Bug de desenho pego antes de qualquer código nascer (T-011)
@@ -323,7 +323,7 @@ e exigi que o teste comprovasse funcionar **sem** a variável de ambiente —
 removendo o `PYTHONIOENCODING` do teste para provar que o código, e não o
 ambiente, resolvia o problema.
 
-**Onde está a evidência:** commit `39c218`; sessão 02, trecho "Antes de
+**Onde está a evidência:** commit `39c218`; `docs/sessions/02-implementacao-base-v3.md`, trecho "Antes de
 aprovar, falta a resposta mais importante: o que exatamente causou o erro de
 encoding".
 
@@ -363,7 +363,7 @@ o comportamento correto de ponta a ponta (17/17), incluindo d-010 com o texto
 restaurado.
 
 **Onde está a evidência:** commits `3f8c32` (docs/spec: D-004) e `e571ff`
-(feat/T-017: texto especial + 17 testes de integração); sessão 02, trecho
+(feat/T-017: texto especial + 17 testes de integração); `docs/sessions/02-implementacao-base-v3.md`, trecho
 "Encontrei uma inconsistência de três vias na spec antes de escrever T-017".
 
 ### Caso 10 — Números inventados no README, corrigidos por iniciativa própria
@@ -392,7 +392,7 @@ não como falha minha em pegar o erro, mas como evidência de que a disciplina
 de verificação exigida ao longo do dia foi internalizada e generalizada para
 uma tarefa (README) onde ninguém tinha pedido explicitamente essa checagem.
 
-**Onde está a evidência:** commit `d2a3b6`; sessão 02, trecho "Os valores que
+**Onde está a evidência:** commit `d2a3b6`; `docs/sessions/02-implementacao-base-v3.md`, trecho "Os valores que
 coloquei no README estavam errados. Corrijo antes de commitar."
 
 ### Caso 11 — Reincidência do `replace_all` corrompendo string literal (T-027)
@@ -423,8 +423,8 @@ exigi (não sugeri) duas varreduras completas por grep — uma por `_LIMITE_V3`
 de teste, sem nenhuma sobra corrompida) — antes de aceitar a correção como
 completa. As duas vieram limpas.
 
-**Onde está a evidência:** sessão 03 (implementação do envelope), trechos "Já
-encontrei a causa antes de você investigar mais" e "Resultados limpos".
+**Onde está a evidência:** `docs/sessions/03-envelope-v4.md`, linha ~816,
+trecho "_LIMITE_V3 — 5 ocorrências, todas corretas: 2 definições de dict...".
 
 **Padrão que eu notei — reincidência:** Este é o mesmo erro do episódio do
 `replace_all` (T-012), reincidente aqui na T-027 — não um incidente isolado.
