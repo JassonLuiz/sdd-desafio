@@ -1,6 +1,6 @@
 # Relatório — Desafio SDD
 
-**Aluno:** Jasson `<completar sobrenome>` · **Repositório:** `<link do fork>` · **Data:** `<data da entrega>`
+**Aluno:** Jasson Luiz · **Repositório:** https://github.com/JassonLuiz/sdd-desafio · **Data:** 31/07/2026
 
 > Isto não é redação. São **evidências**. Toda afirmação deve vir acompanhada de
 > arquivo, hash de commit ou trecho de sessão exportada.
@@ -20,14 +20,32 @@
 | Escrever a spec | Claude materializa a partir das minhas decisões; eu leio linha a linha antes do commit | Redação é rápida para ele; fidelidade à decisão é minha |
 | Desenhar a arquitetura | Claude propôs (pipeline de verificadores, separação I/O/motor); eu auditei em dois rounds — as duas correções de precisão numérica do Caso 5 saíram dessa auditoria | Desenho técnico é força dele; a responsabilidade pelo fluxo do dado (leitura → Decimal) foi minha |
 | Implementar | Claude escreve o código task por task; eu revisei o desenho por escrito antes de qualquer `Write` nas tasks críticas (regra do CLAUDE.md) — foi essa pausa que expôs o Caso 7 | Escrita é rápida para ele; desenho de estado é onde bugs silenciosos se escondem, e revisar por escrito antes do código é mais barato que depurar depois |
-| Escrever testes | `<preencher na Fase 2>` | |
-| Absorver o envelope | `<preencher no Dia 2>` | |
+| Escrever testes | Claude escreve o teste junto com o código de cada task; eu confiro se o corpo do teste exercita de fato o que o nome promete (Casos 6, 9) antes de aprovar | Escrever é rápido; a fidelidade nome↔comportamento é o ponto cego mais recorrente do dia, então a checagem é minha |
+| Absorver o envelope | Mesma divisão da manhã — Claude propõe ambiguidades e desenho, eu decido e reviso todo diff antes do commit; 9 ambiguidades novas, 10 tasks, ~1509 linhas | Processo já validado na manhã; nenhuma mudança de papel foi necessária |
 
-**Onde deleguei e me arrependi:** `<preencher ao longo do caminho>`
+**Onde deleguei e me arrependi:** Confiar em resumos textuais do agente em
+vez de exigir o texto literal do arquivo, no início de cada rodada de
+revisão. Isso se repetiu pelo menos três vezes (a materialização da spec
+v2, a conclusão do D-014, o fechamento da T-029) — em cada uma, o resumo
+inicial era coerente e plausível, mas só a leitura do texto literal
+confirmava (ou, no Caso 4, desmentia) o que havia sido decidido. Deveria ter
+estabelecido "sempre mostre o arquivo completo, nunca resuma" como regra
+fixa desde a primeira rodada da tarde, em vez de precisar reafirmar isso a
+cada vez que um resumo aparecia no lugar do texto.
 
-**Onde não deleguei e deveria ter delegado:** `<preencher ao longo do caminho>`
+**Onde não deleguei e deveria ter delegado:** A aprovação de permissões do
+Claude Code para comandos repetitivos e de baixo risco (variações de
+`python -m pytest ...`, leituras de arquivo, comandos de verificação). Em
+vez de configurar uma regra ampla de permissão (`/permissions`) logo no
+início da Fase 2, aprovei prompt por prompt ao longo do dia inteiro — um
+custo de atenção real e evitável, sem ganho de segurança correspondente,
+já que o verdadeiro portão de controle sempre foi a leitura do diff antes
+do commit, não a autorização de cada execução de teste.
 
-**Usei subagentes / skills / MCP / hooks?** `<preencher; se não usar, dizer por quê>`
+**Usei subagentes / skills / MCP / hooks?** Não cheguei a usar, por
+dificuldades no processo de configuração/descoberta desses recursos dentro
+do fluxo do desafio. Ficou como oportunidade não explorada — não sei dizer
+se teria valido a pena sem ter testado.
 
 **Configuração do agente:** consolidei as regras de trabalho no CLAUDE.md
 (spec antes de código; decisões de ambiguidade são do humano; regra de bug de
@@ -503,14 +521,32 @@ testes de precisão verificassem a string literal do JSON, não o valor após
 `json.loads()` — que não distingue `480` de `480.0`, escondendo exatamente a
 falha que a técnica existe para evitar.
 
-**Li o diff inteiro em que porcentagem das entregas?** `<preencher na Fase 2 —
-honestamente>`
+**Li o diff inteiro em que porcentagem das entregas?** Estimativa honesta:
+cerca de 75%. Nas ~30 tasks (base v3 + envelope), a leitura foi completa e
+linha a linha nas tasks estruturais (T-002, T-006, T-011, T-012, T-015,
+T-017, T-022, T-023, T-027, T-028) — foi aí que os 11 casos de Discernimento
+apareceram. Nas tasks mais mecânicas e de baixo risco (normalização,
+verificadores simples, T-013, T-021) a leitura foi mais rápida, apoiada nos
+pontos fracos que o próprio agente levantava, sem reler cada linha do zero.
 
-**O que aceitei sem verificar direito, e o que me custou:** `<preencher ao
-longo do caminho>`
+**O que aceitei sem verificar direito, e o que me custou:** No início da
+tarde, aceitei alguns resumos de diff sem pedir o texto literal (a T-028 e
+a materialização da spec v2 são os exemplos mais claros) — nos dois casos
+tive que voltar atrás e pedir o conteúdo real antes de aprovar, o que
+custou uma rodada extra de mensagens cada vez. O padrão só ficou consistente
+depois de eu tratar "mostre o texto literal" como exigência fixa, não
+pedido pontual.
 
 **Testes: quem escreveu, e como você sabe que eles testam a coisa certa?**
-`<preencher na Fase 2>`
+O Claude Code, sob minha revisão linha a linha aprovando cada task. A
+confiança de que testam a coisa certa vem de três práticas usadas o dia
+inteiro: (1) exigir que testes de precisão comparem contra a saída real do
+sistema, não estimativa mental (o episódio dos 17 asserts recalculados
+contra `CC-ENG-PLATAFORMA` é o exemplo mais claro); (2) checar se o corpo
+do teste corresponde ao que o nome promete, não só se ele passa (Casos 6 e
+9); (3) exigir grep de verificação após qualquer edição em massa (Casos
+"replace_all" da T-012 e T-027, ambos confirmados limpos por varredura, não
+por afirmação).
 
 **Leitura de documentos materializados:** feita linha a linha no spec.md antes
 do commit — expôs a inversão do `valor_original` (Caso 4 do Discernimento) e
@@ -521,32 +557,108 @@ plan.md, em dois rounds de revisão (Caso 5, `f8fec92`).
 
 ## O envelope
 
-*A mudança de requisito do Dia 2.* `<preencher no Dia 2>`
+*A mudança de requisito do Dia 2.* Recebida no grupo da turma na manhã do
+Dia 2 (entrega adiada em um dia, mas o envelope chegou na data original):
+política de reembolso passa a ser externalizada por centro de custo
+(`politica-v4.json`), com uma categoria nova (`representacao`), um centro de
+custo que zera hospedagem (`limite: 0.00`), e suporte a despesas em moeda
+estrangeira com conversão via tabela de câmbio (`cambio.json`) e fallback de
+data. O item C (fila de aprovação manual acima de R$500) foi descartado
+conscientemente, registrado como decisão explícita — o comunicado deixava
+isso opcional e sem penalidade.
 
-**Quantos arquivos toquei na mão:** `<n>`
-**Quanto tempo levou:** `<...>`
-**Diff de absorção:** `<n> arquivos, +<n>/-<n> linhas`
+**Quantos arquivos toquei na mão:** 28 arquivos (3 de spec: `spec.md`,
+`plan.md`/`tasks.md`, `DECISIONS.md`; 10 de código-fonte em `src/`; 15 de
+teste em `tests/`).
 
-**Absorveu de graça:** `<...>`
+**Quanto tempo levou:** Cerca de 5 horas, do recebimento do envelope pelo
+grupo da turma até o commit final da T-029 (testes de integração).
 
-**Resistiu:** `<...>`
+**Diff de absorção:** 28 arquivos, +1509/-215 linhas
+(`git diff --stat 73a1ec~1..HEAD`). Dois módulos novos criados do zero
+(`parser_politica.py`, `parser_cambio.py`); nenhum módulo da base v3 foi
+descartado — todos foram estendidos.
 
-**Ordem em que fiz:** `<...>`
+**Absorveu de graça:** A separação núcleo/I/O do plan.md (DT-001) permitiu
+plugar `politica_efetiva()` e `buscar_taxa()` como funções puras, sem tocar
+na estrutura do pipeline. O padrão de pipeline como lista de verificadores
+(DT-002) absorveu a conversão de moeda como um "passo 1b" sem reescrever a
+ordem dos passos 2–7. O padrão de decisão para dado ausente (limitação
+declarada + escopo negativo + recomendação de evolução), estabelecido na
+manhã do Dia 1 para AMB-003/006/008/009, foi reaproveitado sem alteração
+para as ambiguidades novas do envelope (AMB-018, AMB-019, AMB-023). A
+convenção de commits e o formato do DECISIONS.md (gatilho → decisão → por
+quê → o que invalidou → tasks afetadas) também foram usados sem ajuste,
+gerando D-005 a D-015 no mesmo padrão de D-001 a D-004.
 
-**Se eu tivesse escrito a spec original sabendo desta mudança:** `<...>`
+**Resistiu:** A chave de bucket do `GerenciadorCotas`, hardcoded para
+`categoria == "hospedagem"` (Caso 7, manhã), teve que ser generalizada para
+ler `periodicidade` da política em vez da categoria — refatoração real, não
+extensão trivial (T-027). A migração dos ~15 pontos de chamada de
+`processar()` para os novos parâmetros obrigatórios (`politica_eff`,
+`gatilho_nf`) exigiu scaffolding temporário (D-014) para não acoplar tasks
+que deveriam ser revisáveis independentemente — dívida técnica documentada
+e removida na T-028. O recálculo dos 17 asserts de `test_integracao.py`
+contra os novos limites de `CC-ENG-PLATAFORMA` foi o ponto de maior atrito:
+a vigência retroativa da política significava que praticamente todos os
+valores esperados do teste mais importante do projeto mudaram (d-001, d-002,
+d-010, d-014 e os totais do resumo).
 
-**O que a spec me poupou, em concreto:** `<...>`
+**Ordem em que fiz:** Rigorosamente spec → DECISIONS.md → tasks → código,
+sem exceção, incluindo nas correções que apareceram no meio da
+implementação (ex.: o template de `motivo_texto` para `LIMITE_DIARIO` de
+hospedagem, D-004; os códigos de saída da CLI e o texto de `COTA_ESGOTADA`
+com limite zero, D-015 — ambos discutidos e registrados em spec antes do
+código correspondente ser escrito).
+
+**Se eu tivesse escrito a spec original sabendo desta mudança:** Teria
+desenhado o `GerenciadorCotas` recebendo a chave de bucket como uma função
+injetada (estratégia), não como um `if categoria == "hospedagem"` — a
+mesma classe de generalização que a T-027 acabou fazendo de qualquer forma,
+só que sem o custo de descobrir o hardcoding tarde. Também teria projetado
+`processar()` com `politica_eff` e `gatilho_nf` como obrigatórios desde a
+v3, com um objeto "política v3" default explícito no `plan.md`, evitando
+o scaffolding temporário do D-014 por completo.
+
+**O que a spec me poupou, em concreto:** A separação núcleo/I/O e o padrão
+de pipeline de verificadores fizeram com que nenhuma regra de negócio nova
+(RF-17, RF-18) exigisse reescrever regras existentes — apenas estendê-las
+com parâmetros novos. O padrão de decisão para dado ausente, já validado em
+4 ambiguidades da manhã, tornou as 3 ambiguidades análogas do envelope
+(fallback de câmbio, moeda ausente, viagem ainda suspensa) rápidas de
+decidir — a estrutura da decisão já existia, só o conteúdo mudou.
 
 ---
 
 ## Fechamento
 
-`<preencher ao final do Dia 2>`
+**Para qual tamanho de projeto isto valeu a pena?** Para este projeto —
+uma regra de negócio real e ambígua, com mudança de requisito no meio do
+caminho — o processo se pagou várias vezes: as duas revisões de desenho
+antes de codar (T-011, T-012) pegaram bugs que só apareceriam em produção
+com dados que o exemplo não cobria: cotas de hospedagem em dois lançamentos
+no mesmo dia e a interação viagem/moeda. Vale a pena para qualquer sistema
+onde "o que a regra de negócio realmente quer dizer" é mais incerto que "como
+implementar a regra depois de decidida" — que é a maioria dos sistemas
+financeiros e de compliance.
 
-**Para qual tamanho de projeto isto valeu a pena?**
+**Para qual não valeria?** Para um script de uso único, um protótipo
+descartável, ou uma regra de negócio já 100% não ambígua e estável (ex.:
+converter um CSV num formato fixo), o overhead de spec + DECISIONS.md +
+tasks numeradas seria puro custo sem contrapartida — a ambiguidade é o que
+justifica o processo, não o tamanho do código.
 
-**Para qual não valeria?**
-
-**O que eu faria diferente:**
+**O que eu faria diferente:** Teria desenhado `GerenciadorCotas` e a
+assinatura de `processar()` já pensando em política/gatilho como parâmetros
+de primeira classe desde a T-011, mesmo sem saber que o envelope viria —
+"os limites podem vir de algum lugar externo algum dia" é uma suposição
+barata de fazer em qualquer sistema financeiro, e teria evitado o
+scaffolding do D-014 por completo.
 
 **A coisa mais desconfortável que aprendi sobre como eu trabalho com IA:**
+Que minha maior contribuição no dia não foi escrever nenhuma linha de
+código — foi recusar aceitar "afirmei que funciona" como prova, repetidamente
+(o `replace_all` da T-012 e da T-027, o sentinel de serialização, o encoding
+da CLI, os números do README). Sem essa disciplina de exigir prova nova a
+cada correção, pelo menos 4 dos 11 casos de Discernimento teriam passado
+despercebidos até a integração — ou pior, até depois da entrega.
