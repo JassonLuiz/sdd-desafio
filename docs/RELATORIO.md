@@ -454,6 +454,32 @@ código: a exigência de prova nova (grep completo, não afirmação de "corrigi
 precisa ser sistemática toda vez que uma substituição textual em massa
 acontecer, independentemente de já ter sido ensinada uma vez.
 
+### Caso 12 — Deriva entre estado real e estado declarado, pega na auditoria final
+
+**O que ele propôs:** Nada — o `tasks.md` simplesmente nunca foi atualizado
+com os checkboxes `[x]` ao longo do dia, embora T-003 a T-029 estivessem
+todas implementadas, testadas e commitadas havia horas.
+
+**Por que estava errado:** O arquivo declarava apenas 3 de 29 tasks
+concluídas, uma contradição direta com o próprio histórico de commits
+(`feat(T-XXX)`/`test(T-XXX)` para cada uma). Isso é exatamente o tipo de
+"deriva silenciosa" que a rubrica pune — tasks não marcadas ao longo do
+caminho sugerem processo encenado, mesmo quando o trabalho real foi feito
+de forma legítima e rastreável.
+
+**Como eu detectei:** Numa auditoria final antes da entrega, revisando o
+`tasks.md` completo em vez de assumir que os checkboxes acompanhavam os
+commits automaticamente.
+
+**O que eu fiz:** Mandei confirmar, task por task, o hash de commit real
+correspondente antes de marcar qualquer checkbox — nenhuma marcação sem
+evidência. As 26 tasks pendentes foram verificadas contra 26 hashes reais
+(coincidentes com os que já havíamos revisado ao longo do dia) antes da
+edição.
+
+**Onde está a evidência:** commit `2f76cfe`, cujo diff mostra os 26
+checkboxes alterados na mesma ordem dos 26 hashes confirmados.
+
 **Padrão que eu notei:** Os erros do agente se distribuem em seis famílias:
 (1) *consistência interna* — exemplo contradizendo o enum que o acompanha
 (Caso 2), decisão registrada e depois invertida na redação (Caso 4);
