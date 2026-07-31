@@ -10,6 +10,13 @@ import pytest
 from src.modelos import DespesaBruta
 from src.motor import processar
 
+_POL_V3 = {
+    "alimentacao":       {"limite": Decimal("60.00"),  "periodicidade": "dia"},
+    "transporte_urbano": {"limite": Decimal("80.00"),  "periodicidade": "dia"},
+    "hospedagem":        {"limite": Decimal("250.00"), "periodicidade": "diaria"},
+}
+_GNF_V3 = Decimal("100.00")
+
 _TABELA = {
     date(2026, 7, 14): {"EUR": Decimal("5.93")},
     date(2026, 7, 15): {"EUR": Decimal("5.88")},
@@ -34,6 +41,8 @@ def test_rf18_eur_convertido_para_brl(colaborador_padrao, periodo_padrao):
         colaborador_padrao, periodo_padrao,
         [_bruta("e-002", valor="22.00", moeda="EUR", data=date(2026, 7, 14))],
         tabela_cambio=_TABELA,
+        politica_eff=_POL_V3,
+        gatilho_nf=_GNF_V3,
     ).itens[0]
     assert item.valor_original == Decimal("22.00")
     assert item.moeda == "EUR"
@@ -47,6 +56,8 @@ def test_rf18_valor_original_preservado(colaborador_padrao, periodo_padrao):
         colaborador_padrao, periodo_padrao,
         [_bruta("e-x", valor="14.50", moeda="EUR", data=date(2026, 7, 15))],
         tabela_cambio=_TABELA,
+        politica_eff=_POL_V3,
+        gatilho_nf=_GNF_V3,
     ).itens[0]
     assert item.valor_original == Decimal("14.50")
     assert item.valor_considerado == Decimal("85.26")
@@ -58,6 +69,8 @@ def test_rf18_moeda_ausente_recusa_no_passo1(colaborador_padrao, periodo_padrao)
         colaborador_padrao, periodo_padrao,
         [_bruta("e-006", moeda="GBP", valor="55.00", data=date(2026, 7, 21))],
         tabela_cambio=_TABELA,
+        politica_eff=_POL_V3,
+        gatilho_nf=_GNF_V3,
     ).itens[0]
     assert item.motivo_codigo == "MOEDA_NAO_SUPORTADA"
     assert item.status == "recusado"
@@ -72,6 +85,8 @@ def test_rf18_taxa_indisponivel_recusa_no_passo1(colaborador_padrao, periodo_pad
         colaborador_padrao, periodo_padrao,
         [_bruta("e-x2", moeda="USD", valor="40.00", data=date(2026, 7, 1))],
         tabela_cambio=_TABELA,
+        politica_eff=_POL_V3,
+        gatilho_nf=_GNF_V3,
     ).itens[0]
     assert item.motivo_codigo == "TAXA_INDISPONIVEL"
     assert item.status == "recusado"
@@ -85,6 +100,8 @@ def test_rf18_brl_nao_converte(colaborador_padrao, periodo_padrao):
         colaborador_padrao, periodo_padrao,
         [_bruta("d-x", valor="33.333", moeda="BRL")],
         tabela_cambio=_TABELA,
+        politica_eff=_POL_V3,
+        gatilho_nf=_GNF_V3,
     ).itens[0]
     assert item.moeda == "BRL"
     assert item.taxa_cambio_aplicada is None
@@ -99,6 +116,8 @@ def test_rf18_usd_sem_nf_acima_limiar(colaborador_padrao, periodo_padrao):
         [_bruta("e-005", categoria="transporte_urbano", valor="40.00",
                 moeda="USD", data=date(2026, 7, 20), tem_nota_fiscal=False)],
         tabela_cambio=_TABELA,
+        politica_eff=_POL_V3,
+        gatilho_nf=_GNF_V3,
     ).itens[0]
     assert item.motivo_codigo == "SEM_NF"
     assert item.moeda == "USD"

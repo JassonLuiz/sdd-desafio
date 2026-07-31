@@ -5,14 +5,23 @@ from pathlib import Path
 
 from src.motor import processar
 from src.parser import carregar_entrada
+from src.parser_cambio import carregar_cambio
+from src.parser_politica import carregar_politica, nota_fiscal_gatilho, politica_efetiva
 from src.serializador import serializar
 
 
-def _calcular(args: argparse.Namespace) -> None:
-    caminho_input = Path(args.input)
-    if not caminho_input.exists():
-        print(f"Erro: arquivo de entrada não encontrado: {args.input}", file=sys.stderr)
+def _arquivo(caminho_str: str, descricao: str) -> Path:
+    caminho = Path(caminho_str)
+    if not caminho.exists():
+        print(f"Erro: {descricao} não encontrado: {caminho_str}", file=sys.stderr)
         sys.exit(1)
+    return caminho
+
+
+def _calcular(args: argparse.Namespace) -> None:
+    caminho_input = _arquivo(args.input, "arquivo de entrada")
+    caminho_politica = _arquivo(args.politica, "arquivo de política")
+    caminho_cambio = _arquivo(args.cambio, "arquivo de câmbio")
 
     try:
         colaborador, periodo, despesas = carregar_entrada(caminho_input)
@@ -20,11 +29,25 @@ def _calcular(args: argparse.Namespace) -> None:
         print(f"Erro: entrada inválida — {e}", file=sys.stderr)
         sys.exit(1)
 
-    resultado = processar(colaborador, periodo, despesas)
+    try:
+        politica = carregar_politica(caminho_politica)
+        tabela_cambio = carregar_cambio(caminho_cambio)
+    except (KeyError, ValueError, json.JSONDecodeError) as e:
+        print(f"Erro: arquivo de política ou câmbio inválido — {e}", file=sys.stderr)
+        sys.exit(1)
+
+    eff = politica_efetiva(politica, colaborador.centro_custo)
+    gnf = nota_fiscal_gatilho(politica)
+
+    resultado = processar(
+        colaborador, periodo, despesas,
+        politica_eff=eff,
+        gatilho_nf=gnf,
+        tabela_cambio=tabela_cambio,
+    )
     saida = serializar(resultado)
 
-    caminho_output = Path(args.output)
-    caminho_output.write_text(saida, encoding="utf-8")
+    Path(args.output).write_text(saida, encoding="utf-8")
 
 
 def main() -> None:
@@ -34,8 +57,10 @@ def main() -> None:
     sub = parser.add_subparsers(dest="comando")
 
     calc = sub.add_parser("calcular", help="Processa um lote de despesas")
-    calc.add_argument("--input", required=True, metavar="ARQUIVO", help="JSON de entrada")
-    calc.add_argument("--output", required=True, metavar="ARQUIVO", help="JSON de saída")
+    calc.add_argument("--input",    required=True, metavar="ARQUIVO", help="JSON de entrada")
+    calc.add_argument("--output",   required=True, metavar="ARQUIVO", help="JSON de saída")
+    calc.add_argument("--politica", required=True, metavar="ARQUIVO", help="JSON de política de reembolso")
+    calc.add_argument("--cambio",   required=True, metavar="ARQUIVO", help="JSON de tabela de câmbio")
 
     args = parser.parse_args()
     if args.comando is None:

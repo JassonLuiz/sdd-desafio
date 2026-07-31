@@ -10,6 +10,34 @@ Ordem cronológica inversa: a mais recente primeiro.
 
 ---
 
+## D-015 — Códigos de saída da CLI e template de COTA_ESGOTADA quando limite=0,00 · `2026-07-31`
+
+**Gatilho (códigos de saída):** T-028 tornou `--politica` e `--cambio` obrigatórios.
+A spec original (seção 4.1) descrevia apenas "código 1 para arquivo não encontrado"
+sem distinguir erros de arquivo (dados) de erros de invocação (argumento ausente).
+A spec estava **incompleta, não errada** — não antecipou que o CLI teria argumentos
+obrigatórios cujo valor sequer seria passado.
+
+**Decisão (códigos de saída):**
+- Código 1: erro de dado/arquivo — arquivo não encontrado ou ilegível.
+- Código 2: erro de argumento — emitido por argparse quando argumento obrigatório
+  está ausente (comportamento padrão, sem código extra).
+
+**Gatilho (COTA_ESGOTADA com limite=0,00):** CC-ENG-PLATAFORMA declara
+`hospedagem.limite = 0.00`. O template de `COTA_ESGOTADA` (D-003) usa a expressão
+"esgotada: R$ \<limite\> já consumidos por itens anteriores no dia", que é semanticamente
+incorreta quando o limite nunca foi positivo — a cota não foi *esgotada* por ninguém,
+a categoria simplesmente não é reembolsável nesse CC.
+
+**Decisão (COTA_ESGOTADA com limite=0,00):** Template separado para `limite = 0,00`:
+`"<categoria> não reembolsável pela política do centro de custo (limite R$ 0,00)"`.
+O ramo padrão ("cota diária de ... esgotada: ...") permanece inalterado para limites > 0.
+
+**O que mudou na spec:** Tabela de templates (seção 4.2) ganhou linha adicional para
+`COTA_ESGOTADA (limite = 0,00)`.
+
+---
+
 ## D-014 — Fallbacks de migração em `motor.py`: `_POLITICA_V3` e `gatilho_nf=Decimal("100.00")` · `2026-07-30`
 
 **Gatilho:** T-025 refatorou `verificar_categoria` para receber `politica_eff`

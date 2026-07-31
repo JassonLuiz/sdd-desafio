@@ -11,6 +11,8 @@ def _item_dict(item: ResultadoItem, q, lit) -> dict:
         "id": item.id,
         "status": item.status,
         "valor_original": lit(item.valor_original),
+        "moeda": item.moeda,
+        "taxa_cambio_aplicada": q(item.taxa_cambio_aplicada) if item.taxa_cambio_aplicada is not None else None,
         "valor_considerado": q(item.valor_considerado),
         "valor_reembolsavel": q(item.valor_reembolsavel),
         "motivo_codigo": item.motivo_codigo,

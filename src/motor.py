@@ -17,13 +17,6 @@ from src.regras import (
 )
 
 
-# Fallback v3 — removido quando T-028 tornar --politica obrigatório no CLI
-_POLITICA_V3 = {
-    "alimentacao":       {"limite": Decimal("60.00"),  "periodicidade": "dia"},
-    "transporte_urbano": {"limite": Decimal("80.00"),  "periodicidade": "dia"},
-    "hospedagem":        {"limite": Decimal("250.00"), "periodicidade": "diaria"},
-}
-
 
 def _texto_passo7(categoria: str, motivo_codigo: str | None, valor_reembolsavel: Decimal, valor_considerado: Decimal, politica_eff: dict) -> str | None:
     if motivo_codigo is None:
@@ -34,6 +27,8 @@ def _texto_passo7(categoria: str, motivo_codigo: str | None, valor_reembolsavel:
         return f"limite diário de {categoria}: reembolsado {fmt_valor(valor_reembolsavel)} de {fmt_valor(valor_considerado)}"
     if motivo_codigo == "COTA_ESGOTADA":
         limite = politica_eff[categoria]["limite"]
+        if limite == Decimal("0.00"):
+            return f"{categoria} não reembolsável pela política do centro de custo (limite R$ 0,00)"
         return f"cota diária de {categoria} esgotada: {fmt_valor(limite)} já consumidos por itens anteriores no dia"
     return None
 
@@ -65,19 +60,18 @@ def processar(
     colaborador: Colaborador,
     periodo: Periodo,
     despesas_brutas: list[DespesaBruta],
+    *,
+    politica_eff: dict,
+    gatilho_nf: Decimal,
     tabela_cambio: dict | None = None,
-    politica_eff: dict | None = None,
-    gatilho_nf: Decimal | None = None,
 ) -> Resultado:
-    _eff = politica_eff if politica_eff is not None else _POLITICA_V3
-    _gnf = gatilho_nf if gatilho_nf is not None else Decimal("100.00")
     if tabela_cambio is None and any(b.moeda != "BRL" for b in despesas_brutas):
         raise ValueError(
             "tabela_cambio é obrigatória quando o lote contém despesas em moeda estrangeira"
         )
 
     vistos: dict = {}
-    gc = GerenciadorCotas(_eff)
+    gc = GerenciadorCotas(politica_eff)
     itens: list[ResultadoItem] = []
 
     for bruta in despesas_brutas:
@@ -117,9 +111,9 @@ def processar(
 
         item = verificar_dominio_valor(despesa)
         item = item or verificar_competencia(despesa, periodo)
-        item = item or verificar_categoria(despesa, _eff)
+        item = item or verificar_categoria(despesa, politica_eff)
         item = item or verificar_duplicata(despesa, vistos)
-        item = item or verificar_nf(despesa, _gnf)
+        item = item or verificar_nf(despesa, gatilho_nf)
 
         if item is None:
             valor_reembolsavel, motivo_codigo = gc.calcular_reembolso(despesa)
@@ -130,7 +124,7 @@ def processar(
                 valor_considerado=despesa.valor_considerado,
                 valor_reembolsavel=valor_reembolsavel,
                 motivo_codigo=motivo_codigo,
-                motivo_texto=_texto_passo7(despesa.categoria, motivo_codigo, valor_reembolsavel, despesa.valor_considerado, _eff),
+                motivo_texto=_texto_passo7(despesa.categoria, motivo_codigo, valor_reembolsavel, despesa.valor_considerado, politica_eff),
                 duplicata_de=None,
                 moeda=despesa.moeda,
                 taxa_cambio_aplicada=despesa.taxa_cambio_aplicada,

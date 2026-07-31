@@ -150,7 +150,8 @@ substring onde esta tabela exige conteúdo específico.
 | `SEM_NF` | `"nota fiscal obrigatória para valor acima de R$ 100,00 (valor: R$ <valor>)"` | `<valor>` = `valor_considerado` com 2 casas decimais, vírgula decimal |
 | `LIMITE_DIARIO` | `"limite diário de <categoria>: reembolsado R$ <reembolsavel> de R$ <considerado>"` | valores com 2 casas decimais, vírgula decimal; **exceto `hospedagem`** — ver linha abaixo |
 | `LIMITE_DIARIO` (hospedagem) | `"limite de 1 diária aplicado (campo num_diarias ausente do schema)"` | exceção: `num_diarias` ausente do schema; `motivo_codigo` permanece `LIMITE_DIARIO` (RF-10, AMB-003, D-004) |
-| `COTA_ESGOTADA` | `"cota diária de <categoria> esgotada: R$ <limite> já consumidos por itens anteriores no dia"` | `<limite>` = `LIMITE_DIARIO[categoria]` com 2 casas decimais, vírgula decimal |
+| `COTA_ESGOTADA` | `"cota diária de <categoria> esgotada: R$ <limite> já consumidos por itens anteriores no dia"` | `<limite>` = `LIMITE_DIARIO[categoria]` com 2 casas decimais, vírgula decimal; somente quando `limite > 0,00` |
+| `COTA_ESGOTADA` (limite = 0,00) | `"<categoria> não reembolsável pela política do centro de custo (limite R$ 0,00)"` | quando o limite efetivo do CC é 0,00 — categoria reconhecida mas não reembolsável nesse CC (D-005, D-015) |
 
 #### Exemplo de saída (3 itens ilustrativos)
 

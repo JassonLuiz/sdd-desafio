@@ -24,6 +24,13 @@ from decimal import Decimal
 from src.modelos import DespesaBruta
 from src.motor import processar
 
+_POL_V3 = {
+    "alimentacao":       {"limite": Decimal("60.00"),  "periodicidade": "dia"},
+    "transporte_urbano": {"limite": Decimal("80.00"),  "periodicidade": "dia"},
+    "hospedagem":        {"limite": Decimal("250.00"), "periodicidade": "diaria"},
+}
+_GNF_V3 = Decimal("100.00")
+
 
 def _bruta(id, categoria="alimentacao", valor="30.00", tem_nota_fiscal=True,
            data=date(2026, 7, 14), descricao="Teste", fornecedor="Forn"):
@@ -40,6 +47,7 @@ def test_borda_hospedagem_sem_nf_nao_chega_ao_limite(colaborador_padrao, periodo
     item = processar(
         colaborador_padrao, periodo_padrao,
         [_bruta("d-h01", categoria="hospedagem", valor="690.00", tem_nota_fiscal=False)],
+        politica_eff=_POL_V3, gatilho_nf=_GNF_V3,
     ).itens[0]
     assert item.motivo_codigo == "SEM_NF"
     assert item.valor_reembolsavel == Decimal("0.00")
@@ -51,6 +59,7 @@ def test_borda_valor_zero_recusado(colaborador_padrao, periodo_padrao):
     item = processar(
         colaborador_padrao, periodo_padrao,
         [_bruta("d-z01", valor="0.00")],
+        politica_eff=_POL_V3, gatilho_nf=_GNF_V3,
     ).itens[0]
     assert item.motivo_codigo == "VALOR_NAO_POSITIVO"
     assert item.valor_reembolsavel == Decimal("0.00")

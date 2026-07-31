@@ -81,3 +81,29 @@ def test_rf14_saida_e_json_valido():
     assert "colaborador" in parsed
     assert "resumo" in parsed
     assert "itens" in parsed
+
+
+def test_rf14_campos_moeda_na_saida():
+    # BRL: moeda="BRL", taxa_cambio_aplicada=null
+    item_brl = _item()
+    saida_brl = json.loads(serializar(_make_resultado([item_brl])))
+    item_json = saida_brl["itens"][0]
+    assert item_json["moeda"] == "BRL"
+    assert item_json["taxa_cambio_aplicada"] is None
+
+    # EUR: moeda="EUR", taxa_cambio_aplicada=5.93 (2dp)
+    item_eur = ResultadoItem(
+        id="e-001", status="aprovado",
+        valor_original=Decimal("22.00"),
+        valor_considerado=Decimal("130.46"),
+        valor_reembolsavel=Decimal("60.00"),
+        motivo_codigo="LIMITE_DIARIO",
+        motivo_texto=None,
+        duplicata_de=None,
+        moeda="EUR",
+        taxa_cambio_aplicada=Decimal("5.93"),
+    )
+    saida_eur = json.loads(serializar(_make_resultado([item_eur])))
+    item_eur_json = saida_eur["itens"][0]
+    assert item_eur_json["moeda"] == "EUR"
+    assert item_eur_json["taxa_cambio_aplicada"] == 5.93
