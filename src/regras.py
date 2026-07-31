@@ -22,12 +22,9 @@ def fmt_valor(v: Decimal) -> str:
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-GATILHO_NF = Decimal("100.00")
-
-
-def verificar_nf(despesa: Despesa) -> ResultadoItem | None:
-    if despesa.valor_considerado > GATILHO_NF and not despesa.tem_nota_fiscal:
-        texto = f"nota fiscal obrigatória para valor acima de R$ 100,00 (valor: {fmt_valor(despesa.valor_considerado)})"
+def verificar_nf(despesa: Despesa, gatilho_nf: Decimal) -> ResultadoItem | None:
+    if despesa.valor_considerado > gatilho_nf and not despesa.tem_nota_fiscal:
+        texto = f"nota fiscal obrigatória para valor acima de {fmt_valor(gatilho_nf)} (valor: {fmt_valor(despesa.valor_considerado)})"
         return _recusar(despesa, "SEM_NF", texto)
     return None
 

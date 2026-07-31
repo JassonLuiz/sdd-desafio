@@ -10,27 +10,31 @@ Ordem cronológica inversa: a mais recente primeiro.
 
 ---
 
-## D-014 — `_POLITICA_V3`: fallback temporário em `motor.py` durante migração para política externalizada · `2026-07-30`
+## D-014 — Fallbacks de migração em `motor.py`: `_POLITICA_V3` e `gatilho_nf=Decimal("100.00")` · `2026-07-30`
 
 **Gatilho:** T-025 refatorou `verificar_categoria` para receber `politica_eff`
-como parâmetro. O motor passou a exigir uma política para verificar categorias,
-mas `test_integracao.py` (que testa o lote v3 `despesas-exemplo.json`) ainda
-chama `processar()` sem passar `politica_eff` — e continuará assim até T-028
-tornar `--politica` obrigatório no CLI.
+como parâmetro; T-026 refatorou `verificar_nf` para receber `gatilho_nf`.
+Em ambos os casos o motor passou a exigir valores externos, mas
+`test_integracao.py` e os testes de câmbio ainda chamam `processar()` sem esses
+parâmetros — e continuarão assim até T-028 tornar `--politica` obrigatório no CLI.
 
-**Decisão:** `motor.py` define `_POLITICA_V3` — um dict com as três categorias
-e limites da v3, no mesmo formato que `politica_efetiva()` retorna. Usado como
-fallback quando `processar(politica_eff=None)`. Não é uma constante de negócio:
-é scaffolding de migração.
+**Decisão:** Dois fallbacks em `motor.py`, com a mesma filosofia:
+- `_POLITICA_V3` — dict com as três categorias e limites v3, usado quando
+  `processar(politica_eff=None)`.
+- `Decimal("100.00")` inline — limiar de NF v3, usado quando
+  `processar(gatilho_nf=None)`.
 
-**Por quê:** A alternativa (passar politica_eff em todos os testes existentes
-de uma vez) acoplaria T-025 a T-028 e tornaria o diff maior e mais difícil de
-revisar. Migração incremental é preferível quando cada task deve caber em um
-commit revisável.
+Nenhum é constante de negócio: são scaffolding de migração incremental.
 
-**Quando será removido:** em T-028, quando `processar` receber `politica_eff`
-obrigatoriamente via CLI. Nesse ponto `_POLITICA_V3` é deletado e
-`test_integracao.py` atualizado para passar a política v4 carregada do arquivo.
+**Por quê:** A alternativa — propagar os dois parâmetros em todos os chamadores
+de uma vez — acoplaria T-025/T-026 a T-028 e tornaria cada diff maior e mais
+difícil de revisar. Migração incremental é preferível quando cada task deve
+caber em um commit revisável.
+
+**Quando serão removidos:** em T-028, quando `processar` receber ambos
+obrigatoriamente via CLI. Nesse ponto `_POLITICA_V3` é deletado, o fallback
+inline de `gatilho_nf` é removido, e `test_integracao.py` é atualizado para
+passar a política v4 carregada do arquivo.
 
 ---
 

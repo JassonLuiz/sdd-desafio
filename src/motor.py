@@ -67,8 +67,10 @@ def processar(
     despesas_brutas: list[DespesaBruta],
     tabela_cambio: dict | None = None,
     politica_eff: dict | None = None,
+    gatilho_nf: Decimal | None = None,
 ) -> Resultado:
     _eff = politica_eff if politica_eff is not None else _POLITICA_V3
+    _gnf = gatilho_nf if gatilho_nf is not None else Decimal("100.00")
     if tabela_cambio is None and any(b.moeda != "BRL" for b in despesas_brutas):
         raise ValueError(
             "tabela_cambio é obrigatória quando o lote contém despesas em moeda estrangeira"
@@ -117,7 +119,7 @@ def processar(
         item = item or verificar_competencia(despesa, periodo)
         item = item or verificar_categoria(despesa, _eff)
         item = item or verificar_duplicata(despesa, vistos)
-        item = item or verificar_nf(despesa)
+        item = item or verificar_nf(despesa, _gnf)
 
         if item is None:
             valor_reembolsavel, motivo_codigo = gc.calcular_reembolso(despesa)
